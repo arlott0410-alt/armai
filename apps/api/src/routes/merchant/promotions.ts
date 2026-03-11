@@ -32,4 +32,14 @@ app.post('/', async (c) => {
   return c.json(promotion, 201);
 });
 
+app.patch('/:promotionId', async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = merchantPromotionSchema.partial().safeParse(body);
+  if (!parsed.success) return c.json({ error: 'Validation failed', details: parsed.error.flatten() }, 400);
+  const supabase = getSupabaseAdmin(c.env);
+  const merchantId = c.get('merchantId');
+  const promotion = await knowledgeService.updatePromotion(supabase, merchantId, c.req.param('promotionId'), parsed.data);
+  return c.json(promotion);
+});
+
 export default app;

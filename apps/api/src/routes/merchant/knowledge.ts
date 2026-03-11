@@ -46,7 +46,8 @@ app.get('/entries', async (c) => {
   const supabase = getSupabaseAdmin(c.env);
   const merchantId = c.get('merchantId');
   const type = c.req.query('type');
-  const list = await knowledgeService.listKnowledgeEntries(supabase, merchantId, { type, activeOnly: true });
+  const activeOnly = c.req.query('activeOnly') !== 'false';
+  const list = await knowledgeService.listKnowledgeEntries(supabase, merchantId, { type, activeOnly });
   return c.json({ entries: list });
 });
 

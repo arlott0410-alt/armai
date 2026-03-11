@@ -64,6 +64,23 @@ export async function createPromotion(supabase: SupabaseClient, merchantId: stri
   return data;
 }
 
+export async function updatePromotion(
+  supabase: SupabaseClient,
+  merchantId: string,
+  promotionId: string,
+  body: Partial<CreateMerchantPromotionBody>
+) {
+  const { data, error } = await supabase
+    .from('merchant_promotions')
+    .update({ ...body, updated_at: new Date().toISOString() })
+    .eq('id', promotionId)
+    .eq('merchant_id', merchantId)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 export async function listKnowledgeEntries(supabase: SupabaseClient, merchantId: string, opts: { type?: string; activeOnly?: boolean } = {}) {
   let q = supabase.from('merchant_knowledge_entries').select('*').eq('merchant_id', merchantId).order('priority', { ascending: false });
   if (opts.type) q = q.eq('type', opts.type);
