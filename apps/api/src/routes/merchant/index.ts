@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from '../../lib/supabase.js';
 import * as merchantService from '../../services/merchant.js';
 import * as orderService from '../../services/orders.js';
 import * as aiContext from '../../services/ai-context.js';
+import * as merchantDashboard from '../../services/merchant-dashboard.js';
 import productsRoutes from './products.js';
 import categoriesRoutes from './categories.js';
 import knowledgeRoutes from './knowledge.js';
@@ -23,8 +24,19 @@ app.use('/*', requireMerchantAdmin);
 app.get('/dashboard', async (c) => {
   const supabase = getSupabaseAdmin(c.env);
   const merchantId = c.get('merchantId');
-  const settings = await merchantService.getMerchantSettings(supabase, merchantId);
-  return c.json({ merchantId, settings });
+  const [summary, readiness, settings] = await Promise.all([
+    merchantDashboard.getMerchantDashboardSummary(supabase, merchantId),
+    merchantDashboard.getMerchantReadiness(supabase, merchantId),
+    merchantService.getMerchantSettings(supabase, merchantId),
+  ]);
+  return c.json({ merchantId, settings, summary, readiness });
+});
+
+app.get('/readiness', async (c) => {
+  const supabase = getSupabaseAdmin(c.env);
+  const merchantId = c.get('merchantId');
+  const readiness = await merchantDashboard.getMerchantReadiness(supabase, merchantId);
+  return c.json({ readiness });
 });
 
 app.get('/orders', async (c) => {

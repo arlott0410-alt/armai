@@ -6,7 +6,10 @@ import SuperLayout from './layouts/SuperLayout';
 import MerchantLayout from './layouts/MerchantLayout';
 import SuperDashboard from './pages/super/SuperDashboard';
 import SuperMerchants from './pages/super/SuperMerchants';
+import SuperMerchantDetail from './pages/super/SuperMerchantDetail';
+import SuperBilling from './pages/super/SuperBilling';
 import SuperSupport from './pages/super/SuperSupport';
+import SuperAudit from './pages/super/SuperAudit';
 import MerchantDashboard from './pages/merchant/MerchantDashboard';
 import MerchantOrders from './pages/merchant/MerchantOrders';
 import MerchantBankSync from './pages/merchant/MerchantBankSync';
@@ -40,7 +43,10 @@ export default function App() {
         <Route index element={<Navigate to="/super/dashboard" replace />} />
         <Route path="dashboard" element={<SuperDashboard />} />
         <Route path="merchants" element={<SuperMerchants />} />
+        <Route path="merchants/:id" element={<SuperMerchantDetail />} />
+        <Route path="billing" element={<SuperBilling />} />
         <Route path="support" element={<SuperSupport />} />
+        <Route path="audit" element={<SuperAudit />} />
       </Route>
       <Route
         path="/merchant"

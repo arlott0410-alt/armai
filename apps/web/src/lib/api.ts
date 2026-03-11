@@ -43,11 +43,30 @@ export const authApi = {
   me: (token: string) => request<MeResponse>('/auth/me', { token }),
 };
 
+export interface SuperDashboardKPIs {
+  mrrThisMonth: number;
+  activeMerchants: number;
+  trialingMerchants: number;
+  pastDueMerchants: number;
+  dueInNext7Days: number;
+  newMerchantsThisMonth: number;
+  activationReadyCount: number;
+}
+
 export interface SuperDashboardResponse {
   mrr: number;
   merchantCount: number;
   activeMerchants: number;
   systemHealth: string;
+  kpis?: SuperDashboardKPIs;
+  revenue?: { currentMonthMRR: number; expectedNextBilling: number };
+  billingHealth?: {
+    dueSoon: { merchantId: string; name: string; nextBillingAt: string | null }[];
+    overdue: { merchantId: string; name: string; nextBillingAt: string | null }[];
+    trialEndingSoon: { merchantId: string; name: string; trialEndsAt: string | null }[];
+  };
+  setupHealth?: { merchantId: string; name: string; slug: string; missingProducts: boolean; noPaymentAccount: boolean; noAiPrompt: boolean; incompleteSetup: boolean }[];
+  recentActivity?: { type: string; id: string; at: string; merchantId?: string; details?: Record<string, unknown> }[];
 }
 
 export interface MerchantListItem {
@@ -56,13 +75,34 @@ export interface MerchantListItem {
   slug: string;
   billing_status: string;
   created_at: string;
+  admin_email?: string | null;
+  plan_code?: string;
+  monthly_price_usd?: number;
+  next_billing_at?: string | null;
+  last_paid_at?: string | null;
+  setup_percent?: number;
+  product_count?: number;
+  payment_account_count?: number;
+  connected_page_count?: number;
+  recent_activity_at?: string | null;
 }
 
 export const superApi = {
   dashboard: (token: string) => request<SuperDashboardResponse>('/super/dashboard', { token }),
   merchants: (token: string) => request<{ merchants: MerchantListItem[] }>('/super/merchants', { token }),
+  merchant: (token: string, id: string) => request<SuperMerchantDetailResponse>(`/super/merchants/${id}`, { token }),
+  updateMerchant: (token: string, id: string, body: { billing_status?: string; plan_code?: string; monthly_price_usd?: number; next_billing_at?: string | null; trial_ends_at?: string | null; notes?: string | null }) =>
+    request<{ ok: boolean }>(`/super/merchants/${id}`, { method: 'PATCH', token, body }),
   createMerchant: (token: string, body: { name: string; slug: string; admin_email: string; admin_password: string; admin_full_name?: string }) =>
     request<{ merchantId: string; userId: string }>('/super/merchants', { method: 'POST', token, body }),
+  merchantBilling: (token: string, merchantId: string) => request<{ events: unknown[] }>(`/super/merchants/${merchantId}/billing`, { token }),
+  createBillingEvent: (token: string, merchantId: string, body: { event_type: string; amount: number; currency?: string; due_at?: string | null; paid_at?: string | null; status?: string; reference_note?: string }) =>
+    request<unknown>(`/super/merchants/${merchantId}/billing`, { method: 'POST', token, body }),
+  merchantNotes: (token: string, merchantId: string) => request<{ notes: { id: string; note: string; created_at: string; actor_id?: string }[] }>(`/super/merchants/${merchantId}/notes`, { token }),
+  addNote: (token: string, merchantId: string, body: { note: string }) => request<unknown>(`/super/merchants/${merchantId}/notes`, { method: 'POST', token, body }),
+  billingEvents: (token: string, merchantId?: string) =>
+    request<{ events: unknown[] }>(`/super/billing/events${merchantId ? `?merchantId=${merchantId}` : ''}`, { token }),
+  auditLogs: (token: string, limit?: number) => request<{ logs: unknown[] }>(`/super/audit${limit != null ? `?limit=${limit}` : ''}`, { token }),
   supportStart: (token: string, merchantId: string) =>
     request<{ supportSessionId: string; merchantId: string; readOnly: boolean }>('/support/start', {
       method: 'POST',
@@ -71,9 +111,41 @@ export const superApi = {
     }),
 };
 
+export interface SuperMerchantDetailResponse {
+  merchant: { id: string; name: string; slug: string; billing_status: string; created_at: string };
+  plan: Record<string, unknown> | null;
+  settings: Record<string, unknown> | null;
+  notes: { id: string; note: string; created_at: string }[];
+  billingEvents: unknown[];
+  orderSummary: { total: number };
+  productCount: number;
+  paymentAccountCount: number;
+  supportAccessHistory: unknown[];
+}
+
+export interface MerchantDashboardSummary {
+  merchantId: string;
+  ordersToday: number;
+  pendingPayment: number;
+  paidToday: number;
+  manualReviewCount: number;
+  probableMatchCount: number;
+  activeProductsCount: number;
+  activePaymentAccountsCount: number;
+}
+
+export interface ReadinessItem {
+  key: string;
+  label: string;
+  status: 'not_started' | 'in_progress' | 'ready';
+  detail?: string;
+}
+
 export interface MerchantDashboardResponse {
   merchantId: string;
   settings: Record<string, unknown> | null;
+  summary?: MerchantDashboardSummary;
+  readiness?: ReadinessItem[];
 }
 
 export interface OrderRow {
@@ -97,6 +169,7 @@ export const merchantApi = {
     return request<{ orders: OrderRow[] }>(`/merchant/orders${query ? `?${query}` : ''}`, { token });
   },
   order: (token: string, orderId: string) => request<OrderRow>(`/merchant/orders/${orderId}`, { token }),
+  readiness: (token: string) => request<{ readiness: ReadinessItem[] }>('/merchant/readiness', { token }),
   bankSync: (token: string, limit?: number) =>
     request<{ bankTransactions: unknown[]; matchingResults: unknown[] }>(
       `/merchant/bank-sync${limit != null ? `?limit=${limit}` : ''}`,
