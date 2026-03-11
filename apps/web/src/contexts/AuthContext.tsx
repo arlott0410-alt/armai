@@ -25,8 +25,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchMe = async (token: string) => {
     const base = getBaseUrl();
     const res = await fetch(`${base}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) throw new Error('Session invalid');
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = (data as { detail?: string; error?: string }).detail ?? (data as { error?: string }).error ?? 'Session invalid';
+      throw new Error(msg);
+    }
     return {
       id: data.userId,
       email: data.email,
