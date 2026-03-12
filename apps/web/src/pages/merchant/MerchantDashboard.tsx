@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { merchantApi, type MerchantDashboardResponse } from '../../lib/api'
+import { useNow, getTrialDaysLeft } from '../../hooks/useNow'
+import { merchantApi, subscriptionApi, type MerchantDashboardResponse } from '../../lib/api'
 import {
   PageShell,
   StatCard,
@@ -33,7 +34,9 @@ export default function MerchantDashboard() {
   const { t } = useI18n()
   const [data, setData] = useState<MerchantDashboardResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [sub, setSub] = useState<{ billingStatus: string; trialEndsAt: string | null } | null>(null)
   const token = user?.accessToken ?? null
+  const now = useNow(60_000)
 
   useEffect(() => {
     if (!token) return
@@ -41,6 +44,21 @@ export default function MerchantDashboard() {
       .dashboard(token)
       .then(setData)
       .catch((e) => setError(e.message))
+  }, [token])
+
+  useEffect(() => {
+    if (!token) return
+    subscriptionApi
+      .get(token)
+      .then(
+        (r) =>
+          r.subscription &&
+          setSub({
+            billingStatus: r.subscription.billingStatus,
+            trialEndsAt: r.subscription.trialEndsAt ?? null,
+          })
+      )
+      .catch(() => {})
   }, [token])
 
   if (error) return <p style={{ color: theme.danger }}>{error}</p>
@@ -68,11 +86,30 @@ export default function MerchantDashboard() {
     { name: 'Paid', value: summary?.paidToday ?? 0, color: 'var(--armai-accent)' },
   ].filter((d) => d.value > 0)
 
+  const isTrialing = sub?.billingStatus === 'trialing' && sub?.trialEndsAt
+  const trialDaysLeft = getTrialDaysLeft(sub?.trialEndsAt ?? null, now)
+
   return (
     <PageShell
       title={t('merchant.overview.title')}
       description={t('merchant.overview.description')}
     >
+      {isTrialing && (
+        <div
+          className="mb-4 rounded-lg border border-[var(--armai-primary)]/40 bg-[var(--armai-primary)]/10 px-4 py-3 text-sm text-[var(--armai-text)]"
+          role="status"
+        >
+          <span className="font-medium">
+            {t('trial.banner').replace('{days}', String(trialDaysLeft))}
+          </span>
+          <Link
+            to="/pricing"
+            className="ml-2 font-medium text-[var(--armai-primary)] hover:underline"
+          >
+            {t('pricing.subscribeCta')}
+          </Link>
+        </div>
+      )}
       {summary != null && (
         <motion.div
           initial={{ opacity: 0, y: 8 }}

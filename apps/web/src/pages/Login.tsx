@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useI18n } from '../i18n/I18nProvider'
 import { theme } from '../theme'
@@ -151,6 +151,12 @@ export default function Login() {
             {loading ? t('login.signingIn') : t('login.signIn')}
           </button>
         </form>
+        <p style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: theme.textMuted }}>
+          {t('signup.noAccount')}{' '}
+          <Link to="/signup" style={{ color: theme.primary, fontWeight: 500 }}>
+            {t('signup.submitButton')}
+          </Link>
+        </p>
       </div>
     </div>
   )

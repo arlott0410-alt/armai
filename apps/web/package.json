@@ -13,15 +13,18 @@
   },
   "dependencies": {
     "@armai/shared": "file:../../packages/shared",
+    "@hookform/resolvers": "^5.2.2",
     "@supabase/supabase-js": "^2.45.0",
     "@tanstack/react-table": "^8.21.3",
     "framer-motion": "^12.35.2",
     "lucide-react": "^0.577.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-hook-form": "^7.71.2",
     "react-router-dom": "^6.28.0",
     "recharts": "^3.8.0",
-    "sonner": "^2.0.7"
+    "sonner": "^2.0.7",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

@@ -9,6 +9,7 @@ import {
   type PlanPublic,
   type SubscribeType,
 } from '../lib/api'
+import { useNow, getTrialDaysLeft } from '../hooks/useNow'
 
 const LAK_FORMAT = new Intl.NumberFormat('lo-LA', { maximumFractionDigits: 0 })
 const STANDARD_PLAN_CODE = 'standard'
@@ -42,6 +43,7 @@ export default function Pricing() {
   const [submitLoading, setSubmitLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
+  const now = useNow()
 
   useEffect(() => {
     plansApi
@@ -145,13 +147,10 @@ export default function Pricing() {
         year: 'numeric',
       })
     : ''
-  const trialDaysLeft =
-    sub?.trialEndsAt && sub.billingStatus === 'trialing'
-      ? Math.max(
-          0,
-          Math.ceil((new Date(sub.trialEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
-        )
-      : 0
+  const trialDaysLeft = getTrialDaysLeft(
+    sub?.billingStatus === 'trialing' ? (sub?.trialEndsAt ?? null) : null,
+    now
+  )
 
   if (loading) {
     return (

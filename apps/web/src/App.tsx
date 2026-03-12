@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 
 const Login = lazy(() => import('./pages/Login'))
+const SignupPage = lazy(() => import('./pages/SignupPage'))
 const Pricing = lazy(() => import('./pages/Pricing'))
 const CheckoutSuccess = lazy(() => import('./pages/CheckoutSuccess'))
 const CheckoutError = lazy(() => import('./pages/CheckoutError'))
@@ -78,6 +79,7 @@ export default function App() {
     <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<SignupPage />} />
         <Route
           path="/super"
           element={

@@ -10,6 +10,7 @@ import {
 } from '../../lib/api'
 import { PageShell, PanelCard } from '../../components/ui'
 import { LanguageSwitcher } from '../../components/LanguageSwitcher'
+import { useNow, getTrialDaysLeft } from '../../hooks/useNow'
 import { theme } from '../../theme'
 
 const labelStyle: React.CSSProperties = {
@@ -43,6 +44,7 @@ export default function GeneralSettingsPage() {
   const [codSaving, setCodSaving] = useState(false)
   const [codSaveError, setCodSaveError] = useState<string | null>(null)
   const [codSaved, setCodSaved] = useState(false)
+  const now = useNow()
 
   useEffect(() => {
     if (!token) return
@@ -149,7 +151,7 @@ export default function GeneralSettingsPage() {
               <p className="text-[var(--armai-text)]">
                 {t('pricing.currentPlan')}: {t('plan.standard')}
                 {sub.billingStatus === 'trialing' && sub.trialEndsAt
-                  ? ` (${t('pricing.trialDaysLeft').replace('{days}', String(Math.max(0, Math.ceil((new Date(sub.trialEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))))} ວັນ)`
+                  ? ` (${t('pricing.trialDaysLeft').replace('{days}', String(getTrialDaysLeft(sub.trialEndsAt, now)))} ວັນ)`
                   : ''}
               </p>
               {sub.nextBillingAt && (

@@ -20,6 +20,7 @@ type AuthState = { user: AuthUser | null; loading: boolean; error: string | null
 const AuthContext = createContext<
   AuthState & {
     signIn: (email: string, password: string) => Promise<void>
+    signUp: (email: string, password: string) => Promise<void>
     signOut: () => Promise<void>
   }
 >(null!)
@@ -88,13 +89,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const signUp = async (email: string, password: string) => {
+    if (!supabase) throw new Error('Supabase not configured')
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) throw new Error(error.message)
+    if (!data.session?.access_token) {
+      throw new Error(
+        'Signup succeeded but no session. Check your email to confirm, or try logging in.'
+      )
+    }
+    const token = data.session.access_token
+    const base = getBaseUrl()
+    const onboardRes = await fetch(`${base}/onboard/merchant`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    })
+    const onboardData = await onboardRes.json().catch(() => ({}))
+    if (!onboardRes.ok) {
+      const msg = (onboardData as { error?: string }).error ?? 'Onboard failed'
+      throw new Error(msg)
+    }
+    const user = await fetchMe(token)
+    setState({ user, loading: false, error: null })
+  }
+
   const signOut = async () => {
     if (supabase) await supabase.auth.signOut()
     setState({ user: null, loading: false, error: null })
   }
 
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signOut }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ ...state, signIn, signUp, signOut }}>
+      {children}
+    </AuthContext.Provider>
   )
 }
 

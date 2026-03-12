@@ -9,6 +9,7 @@ function correlationId(): string {
 
 import health from './routes/health.js'
 import auth from './routes/auth.js'
+import onboard from './routes/onboard.js'
 import plans from './routes/plans.js'
 import subscribe from './routes/subscribe.js'
 import superRoutes from './routes/super/index.js'
@@ -41,6 +42,7 @@ app.use(
 
 app.route('/api/health', health)
 app.route('/api/auth', auth)
+app.route('/api/onboard', onboard)
 app.route('/api/plans', plans)
 app.route('/api/subscribe', subscribe)
 app.route('/api/super', superRoutes)

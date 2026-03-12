@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import { useNow, getTrialDaysLeft } from '../../hooks/useNow'
 import { useI18n } from '../../i18n/I18nProvider'
 import {
   settingsApi,
@@ -68,6 +69,7 @@ export default function MerchantSettings() {
   const [codSaving, setCodSaving] = useState(false)
   const [codSaveError, setCodSaveError] = useState<string | null>(null)
   const [codSaved, setCodSaved] = useState(false)
+  const now = useNow()
 
   useEffect(() => {
     if (!token) return
@@ -140,7 +142,7 @@ export default function MerchantSettings() {
           <p style={{ marginBottom: 8, fontSize: 14, color: theme.textSecondary }}>
             {t('pricing.currentPlan')}: {t('plan.standard')}
             {sub.billingStatus === 'trialing' && sub.trialEndsAt
-              ? ` • ${t('pricing.trialDaysLeft').replace('{days}', String(Math.max(0, Math.ceil((new Date(sub.trialEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))))}`
+              ? ` • ${t('pricing.trialDaysLeft').replace('{days}', String(getTrialDaysLeft(sub.trialEndsAt, now)))}`
               : ` • ${t('pricing.expiresAt')}: ${sub.nextBillingAt ? new Date(sub.nextBillingAt).toLocaleDateString() : '—'}`}
           </p>
           <Link to="/pricing" style={{ color: theme.primary, fontSize: 14 }}>
