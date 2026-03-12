@@ -21,7 +21,7 @@ export default function AdminPlans() {
     if (!token) return
     superApi
       .plans(token)
-      .then((r) => setPlans(r.plans))
+      .then((r) => setPlans([...r.plans].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))))
       .catch((e) => toast.error(e.message))
       .finally(() => setLoading(false))
   }
@@ -31,7 +31,7 @@ export default function AdminPlans() {
   }, [token])
 
   const handleDelete = async (id: string) => {
-    if (!token || !confirm(t('common.cancel') + '? Delete plan?')) return
+    if (!token || !confirm(t('common.deleteConfirm'))) return
     try {
       await superApi.deletePlan(token, id)
       toast.success('Plan deleted')
@@ -132,6 +132,7 @@ export default function AdminPlans() {
       {(editing || creating) && (
         <PlanFormModal
           plan={editing ?? undefined}
+          existingCodes={plans.map((p) => p.code.toLowerCase())}
           token={token!}
           onClose={() => {
             setEditing(null)
@@ -151,11 +152,13 @@ export default function AdminPlans() {
 
 function PlanFormModal({
   plan,
+  existingCodes,
   token,
   onClose,
   onSaved,
 }: {
   plan?: AdminPlanRow
+  existingCodes: string[]
   token: string
   onClose: () => void
   onSaved: () => void
@@ -171,18 +174,36 @@ function PlanFormModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const price = parseInt(priceLak, 10)
+    if (isNaN(price) || price <= 0) {
+      toast.error('Price must be greater than 0')
+      return
+    }
+    const codeTrim = code.trim().toLowerCase()
+    if (!codeTrim) {
+      toast.error('Code is required')
+      return
+    }
+    if (!plan && existingCodes.includes(codeTrim)) {
+      toast.error('Plan code already exists')
+      return
+    }
     setSaving(true)
     try {
-      const price = parseInt(priceLak, 10)
       const max = maxUsers.trim() ? parseInt(maxUsers, 10) : null
+      if (max != null && (isNaN(max) || max < 0)) {
+        toast.error('Max users must be 0 or greater')
+        setSaving(false)
+        return
+      }
       const featureList = features
         .split('\n')
         .map((s) => s.trim())
         .filter(Boolean)
       if (plan) {
         await superApi.updatePlan(token, plan.id, {
-          name,
-          code,
+          name: name.trim(),
+          code: codeTrim,
           price_lak: price,
           features: featureList,
           max_users: max,
@@ -190,8 +211,8 @@ function PlanFormModal({
         })
       } else {
         await superApi.createPlan(token, {
-          name,
-          code,
+          name: name.trim(),
+          code: codeTrim,
           price_lak: price,
           features: featureList,
           max_users: max,

@@ -1,7 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Search } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { superApi, type MerchantListItem } from '../../lib/api'
+import { formatLAK } from '../../lib/formatLAK'
 import {
   PageShell,
   Card,
@@ -11,6 +13,7 @@ import {
   MerchantTable,
 } from '../../components/ui'
 import { theme } from '../../theme'
+import { toast } from 'sonner'
 
 const primaryBtn = {
   padding: '10px 18px',
@@ -45,7 +48,20 @@ export default function SuperMerchants() {
   const [defaultCurrency, setDefaultCurrency] = useState<string>('')
   const [addError, setAddError] = useState<string | null>(null)
   const [addLoading, setAddLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const token = user?.accessToken ?? null
+
+  const filteredMerchants = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return merchants
+    return merchants.filter(
+      (m) =>
+        m.name?.toLowerCase().includes(q) ||
+        m.slug?.toLowerCase().includes(q) ||
+        (m.admin_email ?? '').toLowerCase().includes(q) ||
+        (m.plan_code ?? '').toLowerCase().includes(q)
+    )
+  }, [merchants, searchQuery])
 
   const load = () => {
     if (!token) return
@@ -58,6 +74,7 @@ export default function SuperMerchants() {
       })
       .catch((e) => {
         setError(e.message)
+        toast.error(e.message)
         setLoading(false)
       })
   }
@@ -94,7 +111,18 @@ export default function SuperMerchants() {
     }
   }
 
-  if (error) return <p style={{ color: theme.danger }}>{error}</p>
+  if (error) {
+    return (
+      <PageShell title="Merchants" description="Manage merchant tenants">
+        <div
+          className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400"
+          role="alert"
+        >
+          {error}
+        </div>
+      </PageShell>
+    )
+  }
 
   const columns = [
     {
@@ -114,9 +142,14 @@ export default function SuperMerchants() {
     },
     { key: 'plan_code', header: 'Plan', render: (m: MerchantListItem) => m.plan_code ?? '—' },
     {
-      key: 'monthly_price_usd',
-      header: 'Monthly',
-      render: (m: MerchantListItem) => `$${m.monthly_price_usd ?? 0}`,
+      key: 'monthly_price_lak',
+      header: 'Monthly (LAK)',
+      render: (m: MerchantListItem) => {
+        const lak =
+          m.monthly_price_lak ??
+          (m.monthly_price_usd != null ? Math.round(m.monthly_price_usd * 36000) : null)
+        return lak != null && lak > 0 ? formatLAK(lak) : '—'
+      },
     },
     {
       key: 'billing_status',
@@ -165,11 +198,36 @@ export default function SuperMerchants() {
       title="Merchants"
       description="Manage merchant tenants"
       actions={
-        <button onClick={() => setAddOpen(true)} style={primaryBtn}>
+        <button
+          onClick={() => setAddOpen(true)}
+          style={primaryBtn}
+          className="shadow-sm hover:shadow-md transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)]"
+          aria-label="Add merchant"
+        >
           Add Merchant
         </button>
       }
     >
+      <div className="mb-4 flex flex-col sm:flex-row gap-2">
+        <label htmlFor="merchant-search" className="sr-only">
+          Search merchants
+        </label>
+        <div className="relative flex-1 max-w-xs">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--armai-text-muted)]"
+            aria-hidden
+          />
+          <input
+            id="merchant-search"
+            type="search"
+            placeholder="Search by name, slug, email, plan..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-[var(--armai-border)] bg-[var(--armai-bg)] text-[var(--armai-text)] text-sm"
+            aria-label="Search merchants"
+          />
+        </div>
+      </div>
       {addOpen && (
         <Card style={{ marginBottom: 24 }}>
           <CardBody>
@@ -327,9 +385,11 @@ export default function SuperMerchants() {
           <CardBody style={{ padding: 0 }}>
             <MerchantTable
               columns={columns}
-              data={merchants}
+              data={filteredMerchants}
               onRowClick={(m) => navigate(`/super/merchants/${m.id}`)}
-              emptyMessage="No merchants."
+              emptyMessage={
+                searchQuery.trim() ? 'No merchants match your search.' : 'No merchants.'
+              }
             />
           </CardBody>
         </Card>

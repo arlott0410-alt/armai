@@ -48,7 +48,10 @@ export function LanguageSwitcher({
   }
 
   return (
-    <div className="relative flex items-center gap-1 rounded-lg border border-[var(--armai-border-muted)] bg-[var(--armai-surface-elevated)] p-1">
+    <div
+      className="relative flex items-center gap-1 rounded-lg border border-[var(--armai-border-muted)] bg-[var(--armai-surface-elevated)] p-1"
+      title="Language"
+    >
       <Globe className="h-4 w-4 text-[var(--armai-text-muted)]" aria-hidden />
       {LOCALES.map((l) => (
         <button

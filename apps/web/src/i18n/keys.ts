@@ -65,6 +65,10 @@ export const I18N_KEYS = [
   'locale.lao',
   'locale.english',
   'locale.thai',
+  'common.deleteConfirm',
+  'super.overview',
+  'super.merchants',
+  'super.noRevenue',
 ] as const
 
 export type I18nKey = (typeof I18N_KEYS)[number]

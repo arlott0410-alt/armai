@@ -19,6 +19,7 @@ import {
   Sun,
   Moon,
   Bell,
+  Menu,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
@@ -34,9 +35,12 @@ export default function MerchantLayout() {
   const { theme, toggleDark } = useTheme()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const token = user?.accessToken ?? null
 
   useEffect(() => {
+    const saved = localStorage.getItem('armai.locale')
+    if (saved === 'lo' || saved === 'th' || saved === 'en') return
     if (!token) return
     merchantApi
       .dashboard(token)
@@ -73,11 +77,19 @@ export default function MerchantLayout() {
         {t('nav.dashboard')}
       </a>
 
-      {/* Sidebar */}
+      {/* Mobile menu backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/50 md:hidden"
+          aria-hidden
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      {/* Sidebar: overlay on mobile when open, inline on md+ */}
       <aside
-        className={`flex flex-col border-r border-[var(--armai-border-muted)] bg-[var(--armai-surface)] transition-[width] duration-200 ${
+        className={`flex flex-col border-r border-[var(--armai-border-muted)] bg-[var(--armai-surface)] transition-all duration-200 ${
           sidebarCollapsed ? 'w-[64px]' : 'w-60'
-        }`}
+        } ${mobileMenuOpen ? 'fixed inset-y-0 left-0 z-30 translate-x-0' : '-translate-x-full'} md:translate-x-0 md:relative md:z-0`}
         role="navigation"
         aria-label={t('nav.dashboard')}
       >
@@ -99,85 +111,156 @@ export default function MerchantLayout() {
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto p-2 space-y-1" role="menubar">
-          <NavLink to="/merchant/dashboard" className={navLinkClass} role="menuitem" end>
+          <NavLink
+            to="/merchant/dashboard"
+            className={navLinkClass}
+            role="menuitem"
+            end
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.overview')}
             </span>
           </NavLink>
-          <NavLink to="/merchant/orders" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/merchant/orders"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <Activity className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.orders')}
             </span>
           </NavLink>
-          <NavLink to="/merchant/products" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/merchant/products"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <Package className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.products')}
             </span>
           </NavLink>
-          <NavLink to="/merchant/categories" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/merchant/categories"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <FolderTree className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.categories')}
             </span>
           </NavLink>
-          <NavLink to="/merchant/knowledge" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/merchant/knowledge"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <BookOpen className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.knowledge')}
             </span>
           </NavLink>
-          <NavLink to="/merchant/promotions" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/merchant/promotions"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <Tag className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.promotions')}
             </span>
           </NavLink>
-          <NavLink to="/merchant/payment-accounts" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/merchant/payment-accounts"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <CreditCard className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.paymentAccounts')}
             </span>
           </NavLink>
-          <NavLink to="/merchant/bank-sync" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/merchant/bank-sync"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <RefreshCw className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.bankSync')}
             </span>
           </NavLink>
-          <NavLink to="/merchant/operations" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/merchant/operations"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <Activity className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.operations')}
             </span>
           </NavLink>
-          <NavLink to="/merchant/telegram" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/merchant/telegram"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <Send className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.telegram')}
             </span>
           </NavLink>
-          <NavLink to="/merchant/channels" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/merchant/channels"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <MessageCircle className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.messaging')}
             </span>
           </NavLink>
-          <NavLink to="/merchant/customers" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/merchant/customers"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <Users className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.customers')}
             </span>
           </NavLink>
-          <NavLink to="/merchant/settings" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/merchant/settings"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <Settings className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.settings')}
             </span>
           </NavLink>
-          <NavLink to="/pricing" className={navLinkClass} role="menuitem">
+          <NavLink
+            to="/pricing"
+            className={navLinkClass}
+            role="menuitem"
+            onClick={() => setMobileMenuOpen(false)}
+          >
             <span className="flex items-center gap-2">
               <PlanIcon className="h-4 w-4 shrink-0" />
               {!sidebarCollapsed && t('nav.plans')}
@@ -193,6 +276,15 @@ export default function MerchantLayout() {
           role="banner"
         >
           <div className="flex items-center gap-3 min-w-0 flex-1">
+            <button
+              type="button"
+              className="md:hidden p-2 rounded-lg text-[var(--armai-text-muted)] hover:bg-[var(--armai-surface-elevated)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)]"
+              onClick={() => setMobileMenuOpen((o) => !o)}
+              aria-label="Open menu"
+              aria-expanded={mobileMenuOpen}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
             <input
               type="search"
               placeholder={t('nav.dashboard') + '...'}
@@ -201,6 +293,7 @@ export default function MerchantLayout() {
             />
           </div>
           <div className="flex items-center gap-2">
+            <LanguageSwitcher inDropdown={false} />
             <button
               type="button"
               onClick={toggleDark}
@@ -281,7 +374,7 @@ export default function MerchantLayout() {
 
         <main
           id="main-content"
-          className="flex-1 p-4 md:p-6 overflow-auto"
+          className="flex-1 p-4 md:p-6 overflow-auto min-w-0"
           role="main"
           tabIndex={-1}
         >

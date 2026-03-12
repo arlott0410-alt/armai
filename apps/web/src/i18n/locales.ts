@@ -42,8 +42,8 @@ export const en: Dictionary = {
   'kpi.readyToShip': 'Ready to ship',
   'kpi.activeProducts': 'Active products',
   'kpi.paymentAccounts': 'Payment accounts',
-  'plan.basic': 'Basic Plan ($50/month)',
-  'plan.pro': 'Pro Plan ($300/month)',
+  'plan.basic': 'Basic Plan',
+  'plan.pro': 'Pro Plan',
   'plan.perMonth': '/month',
   'pricing.title': 'Plans & Pricing',
   'pricing.subtitle': 'Choose the plan that fits your business in Laos.',
@@ -72,6 +72,10 @@ export const en: Dictionary = {
   'locale.lao': 'Lao',
   'locale.english': 'English',
   'locale.thai': 'Thai',
+  'common.deleteConfirm': 'Delete this plan? This cannot be undone.',
+  'super.overview': 'Overview',
+  'super.merchants': 'Merchants',
+  'super.noRevenue': 'No revenue data yet',
 }
 
 export const th: Dictionary = {
@@ -111,8 +115,8 @@ export const th: Dictionary = {
   'kpi.readyToShip': 'พร้อมจัดส่ง',
   'kpi.activeProducts': 'สินค้าพร้อมขาย',
   'kpi.paymentAccounts': 'บัญชีรับเงิน',
-  'plan.basic': 'แผนพื้นฐาน ($50/เดือน)',
-  'plan.pro': 'แผน Pro ($300/เดือน)',
+  'plan.basic': 'แผนพื้นฐาน',
+  'plan.pro': 'แผน Pro',
   'plan.perMonth': '/เดือน',
   'pricing.title': 'แผนและราคา',
   'pricing.subtitle': 'เลือกแผนที่เหมาะกับธุรกิจของคุณ',
@@ -141,6 +145,10 @@ export const th: Dictionary = {
   'locale.lao': 'ลาว',
   'locale.english': 'English',
   'locale.thai': 'ไทย',
+  'common.deleteConfirm': 'ลบแผนนี้หรือไม่? ไม่สามารถยกเลิกได้',
+  'super.overview': 'ภาพรวม',
+  'super.merchants': 'ร้านค้า',
+  'super.noRevenue': 'ยังไม่มีข้อมูลรายได้',
 }
 
 export const lo: Dictionary = {
@@ -180,8 +188,8 @@ export const lo: Dictionary = {
   'kpi.readyToShip': 'ພ້ອມສົ່ງ',
   'kpi.activeProducts': 'ສິນຄ້າກຳລັງຂາຍ',
   'kpi.paymentAccounts': 'ບັນຊີຮັບເງິນ',
-  'plan.basic': 'ແຜນພື້ນຖານ ($50/ເດືອນ)',
-  'plan.pro': 'ແຜນໂປຣ ($300/ເດືອນ)',
+  'plan.basic': 'ແຜນພື້ນຖານ',
+  'plan.pro': 'ແຜນໂປຣ',
   'plan.perMonth': '/ເດືອນ',
   'pricing.title': 'ແຜນການ ແລະ ລາຄາ',
   'pricing.subtitle': 'ເລືອກແຜນທີ່ໃຊ້ງານກັບທຸລະກິດຂອງທ່ານໃນລາວ.',
@@ -210,6 +218,10 @@ export const lo: Dictionary = {
   'locale.lao': 'ລາວ',
   'locale.english': 'English',
   'locale.thai': 'ໄທ',
+  'common.deleteConfirm': 'Delete this plan? This cannot be undone.',
+  'super.overview': 'Overview',
+  'super.merchants': 'Merchants',
+  'super.noRevenue': 'No revenue data yet',
 }
 
 export const dictionaries: Record<Locale, Dictionary> = { en, th, lo }

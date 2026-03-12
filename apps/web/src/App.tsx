@@ -40,7 +40,21 @@ function ProtectedRoute({
   requireSuper?: boolean
 }) {
   const { user, loading } = useAuth()
-  if (loading) return <div style={{ padding: 24 }}>Loading...</div>
+  if (loading) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center bg-[var(--armai-bg)]"
+        role="status"
+        aria-live="polite"
+      >
+        <div
+          className="h-8 w-48 bg-[var(--armai-surface-elevated)] rounded animate-pulse"
+          aria-hidden
+        />
+        <span className="sr-only">Loading</span>
+      </div>
+    )
+  }
   if (!user) return <Navigate to="/login" replace />
   if (requireSuper && user.role !== 'super_admin')
     return <Navigate to="/merchant/dashboard" replace />

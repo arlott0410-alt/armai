@@ -1,100 +1,120 @@
+import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Menu, LogOut } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { theme } from '../theme'
+import { LanguageSwitcher } from '../components/LanguageSwitcher'
 
 export default function SuperLayout() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleSignOut = async () => {
     await signOut()
     navigate('/login')
   }
 
-  const navStyle = ({ isActive }: { isActive: boolean }) => ({
-    display: 'block',
-    padding: '10px 12px',
-    borderRadius: 6,
-    color: isActive ? theme.highlight : theme.textSecondary,
-    textDecoration: 'none' as const,
-    fontSize: 13,
-    fontWeight: isActive ? 600 : 500,
-    borderLeft: isActive ? `3px solid ${theme.primary}` : '3px solid transparent',
-  })
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    'block px-3 py-2 rounded-lg text-sm font-medium transition-colors ' +
+    (isActive
+      ? 'text-[var(--armai-primary)] bg-primary/10 border-l-4 border-l-[var(--armai-primary)]'
+      : 'text-[var(--armai-text-secondary)] hover:bg-[var(--armai-surface-elevated)] hover:text-[var(--armai-text)]')
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: theme.background }}>
+    <div className="flex min-h-screen bg-[var(--armai-bg)]">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-20 bg-black/50 md:hidden"
+          aria-hidden
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
       <aside
-        style={{
-          width: 240,
-          background: theme.surface,
-          borderRight: `1px solid ${theme.borderMuted}`,
-          padding: 20,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
+        className={`flex flex-col w-60 bg-[var(--armai-surface)] border-r border-[var(--armai-border-muted)] p-4
+          fixed md:relative inset-y-0 left-0 z-30 transform transition-transform duration-200
+          -translate-x-full md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : ''}`}
+        role="navigation"
+        aria-label="Super admin navigation"
       >
-        <div style={{ marginBottom: 24 }}>
-          <span
-            style={{ fontSize: 18, fontWeight: 700, color: theme.text, letterSpacing: '-0.02em' }}
-          >
-            ArmAI
-          </span>
-          <span
-            style={{
-              fontSize: 11,
-              color: theme.primary,
-              marginLeft: 6,
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-            }}
-          >
+        <div className="mb-6">
+          <span className="text-lg font-bold text-[var(--armai-text)] tracking-tight">ArmAI</span>
+          <span className="ml-1.5 text-xs text-[var(--armai-primary)] font-semibold uppercase tracking-wider">
             Command Center
           </span>
         </div>
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <NavLink to="/super/dashboard" style={navStyle}>
+        <nav className="flex flex-col gap-0.5 flex-1">
+          <NavLink
+            to="/super/dashboard"
+            className={navLinkClass}
+            onClick={() => setSidebarOpen(false)}
+          >
             Overview
           </NavLink>
-          <NavLink to="/super/merchants" style={navStyle}>
+          <NavLink
+            to="/super/merchants"
+            className={navLinkClass}
+            onClick={() => setSidebarOpen(false)}
+          >
             Merchants
           </NavLink>
-          <NavLink to="/super/billing" style={navStyle}>
+          <NavLink
+            to="/super/billing"
+            className={navLinkClass}
+            onClick={() => setSidebarOpen(false)}
+          >
             Billing
           </NavLink>
-          <NavLink to="/super/support" style={navStyle}>
+          <NavLink
+            to="/super/support"
+            className={navLinkClass}
+            onClick={() => setSidebarOpen(false)}
+          >
             Support
           </NavLink>
-          <NavLink to="/super/audit" style={navStyle}>
+          <NavLink to="/super/audit" className={navLinkClass} onClick={() => setSidebarOpen(false)}>
             Audit
           </NavLink>
-          <NavLink to="/admin/plans" style={navStyle}>
+          <NavLink to="/admin/plans" className={navLinkClass} onClick={() => setSidebarOpen(false)}>
             Plans (Admin)
           </NavLink>
         </nav>
-        <div
-          style={{ marginTop: 'auto', paddingTop: 24, borderTop: `1px solid ${theme.borderMuted}` }}
-        >
-          <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 8 }}>{user?.email}</div>
-          <button
-            onClick={handleSignOut}
-            style={{
-              padding: '8px 14px',
-              background: 'transparent',
-              color: theme.textSecondary,
-              border: `1px solid ${theme.borderMuted}`,
-              borderRadius: 6,
-              fontSize: 13,
-            }}
+        <div className="mt-auto pt-4 border-t border-[var(--armai-border-muted)] space-y-3">
+          <div
+            className="text-xs text-[var(--armai-text-muted)] truncate"
+            title={user?.email ?? ''}
           >
+            {user?.email}
+          </div>
+          <LanguageSwitcher inDropdown={false} />
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-[var(--armai-text-secondary)] hover:bg-[var(--armai-surface-elevated)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)]"
+            aria-label="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
             Sign out
           </button>
         </div>
       </aside>
-      <main style={{ flex: 1, padding: 28, overflow: 'auto', background: theme.background }}>
-        <Outlet />
-      </main>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="md:hidden h-14 flex items-center px-4 border-b border-[var(--armai-border-muted)] bg-[var(--armai-surface)]">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen((o) => !o)}
+            className="p-2 rounded-lg text-[var(--armai-text-muted)] hover:bg-[var(--armai-surface-elevated)]"
+            aria-label="Open menu"
+            aria-expanded={sidebarOpen}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <span className="ml-2 font-semibold text-[var(--armai-text)]">ArmAI</span>
+        </header>
+        <main className="flex-1 p-4 md:p-6 overflow-auto" role="main">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

@@ -11,26 +11,64 @@ export function getBaseUrl(): string {
   return u.endsWith('/api') ? u : `${u}/api`
 }
 
+/** Rate limit: max concurrent in-flight requests */
+const MAX_CONCURRENT = 6
+let inFlight = 0
+const queue: Array<() => void> = []
+
+function runNext() {
+  if (inFlight >= MAX_CONCURRENT || queue.length === 0) return
+  inFlight++
+  const next = queue.shift()!
+  next()
+}
+
 async function request<T>(
   path: string,
   opts: { method?: string; body?: unknown; token?: string | null } = {}
 ): Promise<T> {
-  const base = getBaseUrl()
-  const url = path.startsWith('http') ? path : `${base}${path}`
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
-  if (opts.token) headers['Authorization'] = `Bearer ${opts.token}`
-  const res = await fetch(url, {
-    method: opts.method ?? 'GET',
-    headers,
-    body: opts.body != null ? JSON.stringify(opts.body) : undefined,
+  await new Promise<void>((resolve) => {
+    if (inFlight < MAX_CONCURRENT) {
+      inFlight++
+      resolve()
+    } else {
+      queue.push(() => resolve())
+    }
   })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`)
+  try {
+    const base = getBaseUrl()
+    const url = path.startsWith('http') ? path : `${base}${path}`
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    if (opts.token) headers['Authorization'] = `Bearer ${opts.token}`
+    if (opts.body != null && typeof opts.body === 'object' && !Array.isArray(opts.body)) {
+      const b = opts.body as Record<string, unknown>
+      if (
+        b.price_lak != null &&
+        typeof b.price_lak === 'number' &&
+        (b.price_lak < 0 || !Number.isFinite(b.price_lak))
+      ) {
+        throw new Error('Invalid price_lak')
+      }
+      if (b.code != null && typeof b.code === 'string' && !/^[a-z0-9_-]+$/.test(b.code.trim())) {
+        throw new Error('Invalid plan code (use letters, numbers, hyphen, underscore)')
+      }
+    }
+    const res = await fetch(url, {
+      method: opts.method ?? 'GET',
+      headers,
+      body: opts.body != null ? JSON.stringify(opts.body) : undefined,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`)
+    }
+    return data as T
+  } finally {
+    inFlight--
+    runNext()
   }
-  return data as T
 }
 
 export interface MeResponse {
@@ -156,6 +194,8 @@ export interface MerchantListItem {
   admin_email?: string | null
   plan_code?: string
   monthly_price_usd?: number
+  /** LAK per month when API returns it */
+  monthly_price_lak?: number
   next_billing_at?: string | null
   last_paid_at?: string | null
   setup_percent?: number
