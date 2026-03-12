@@ -1,0 +1,21 @@
+{
+  "name": "ArmAI",
+  "short_name": "ArmAI",
+  "description": "AI SaaS for Merchants — Laos Enterprise",
+  "theme_color": "#000000",
+  "background_color": "#0a0a0a",
+  "display": "standalone",
+  "start_url": "/",
+  "lang": "lo",
+  "dir": "ltr",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"]
+}

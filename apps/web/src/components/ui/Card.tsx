@@ -1,4 +1,5 @@
 import React from 'react'
+import { motion } from 'framer-motion'
 import { theme } from '../../theme'
 
 const cardStyle: React.CSSProperties = {
@@ -6,20 +7,31 @@ const cardStyle: React.CSSProperties = {
   borderRadius: 10,
   border: `1px solid ${theme.borderMuted}`,
   overflow: 'hidden',
+  boxShadow: `0 0 20px ${theme.goldGlow}`,
+  transition: 'transform 0.5s ease-in-out, box-shadow 0.5s ease-in-out',
 }
 
 export function Card({
   children,
   style,
+  className,
   ...rest
 }: {
   children: React.ReactNode
   style?: React.CSSProperties
+  className?: string
 } & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div style={{ ...cardStyle, ...style }} {...rest}>
-      {children}
-    </div>
+    <motion.div
+      style={{ ...cardStyle, ...style }}
+      className={className}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeInOut' }}
+      whileHover={{ scale: 1.05, boxShadow: `0 0 24px ${theme.goldGlow}` }}
+    >
+      <div {...rest}>{children}</div>
+    </motion.div>
   )
 }
 

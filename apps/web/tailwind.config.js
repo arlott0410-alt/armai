@@ -6,18 +6,19 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#0070f3',
-          hover: '#0060df',
-          muted: 'rgba(0, 112, 243, 0.15)',
+          DEFAULT: '#D4AF37',
+          hover: '#B8860B',
+          muted: 'rgba(212, 175, 55, 0.15)',
+          glow: 'rgba(212, 175, 55, 0.3)',
         },
         secondary: {
-          DEFAULT: '#f0f0f0',
-          dark: '#e5e5e5',
+          DEFAULT: '#1A1A1A',
+          dark: '#0f0f0f',
         },
         accent: {
-          DEFAULT: '#4caf50',
-          hover: '#43a047',
-          muted: 'rgba(76, 175, 80, 0.15)',
+          DEFAULT: '#FFFFFF',
+          hover: '#f0f0f0',
+          muted: 'rgba(255, 255, 255, 0.1)',
         },
         surface: {
           DEFAULT: 'var(--armai-surface)',
@@ -25,7 +26,14 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Phetsarath OT', 'Noto Sans Lao', 'system-ui', 'sans-serif'],
+        sans: ['Phetsarath OT', 'IBM Plex Sans', 'Noto Sans Lao', 'system-ui', 'sans-serif'],
+      },
+      boxShadow: {
+        gold: '0 0 10px rgba(212, 175, 55, 0.3)',
+        'gold-lg': '0 0 20px rgba(212, 175, 55, 0.25)',
+      },
+      transitionDuration: {
+        luxury: '500ms',
       },
     },
   },

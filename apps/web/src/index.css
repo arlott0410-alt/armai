@@ -1,7 +1,6 @@
-/* ArmAI Enterprise: Laos SaaS — Phetsarath OT, Noto Sans Lao, Noto Sans Thai */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+Thai:wght@400;700&display=swap');
+/* ArmAI Enterprise: Luxury Laos SaaS — Phetsarath OT (Lao), IBM Plex Sans */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+Thai:wght@400;700&display=swap');
 
-/* Phetsarath OT: add font files to public/fonts/ (e.g. from dgc.gov.la or Google Fonts repo) */
 @font-face {
   font-family: 'Phetsarath OT';
   src: local('Phetsarath OT'), local('PhetsarathOT');
@@ -9,50 +8,64 @@
   font-display: swap;
 }
 
+/* Luxury palette: gold #D4AF37, velvet black #1A1A1A, dark gold #B8860B */
 :root {
-  --armai-primary: #0070f3;
-  --armai-primary-hover: #0060df;
-  --armai-secondary: #f0f0f0;
-  --armai-accent: #4caf50;
-  --armai-gradient-start: #6366f1;
-  --armai-gradient-end: #0070f3;
-  --armai-bg: #ffffff;
-  --armai-surface: #fafafa;
+  --armai-primary: #d4af37;
+  --armai-primary-hover: #b8860b;
+  --armai-gold-glow: rgba(212, 175, 55, 0.3);
+  --armai-secondary: #1a1a1a;
+  --armai-accent: #ffffff;
+  --armai-gradient-start: #d4af37;
+  --armai-gradient-end: #b8860b;
+  --armai-bg: #fafafa;
+  --armai-surface: #ffffff;
   --armai-surface-elevated: #f5f5f5;
-  --armai-border: rgba(0, 0, 0, 0.08);
+  --armai-border: rgba(26, 26, 26, 0.1);
   --armai-border-muted: rgba(0, 0, 0, 0.06);
   --armai-text: #111111;
   --armai-text-secondary: #444444;
   --armai-text-muted: #71717a;
   --armai-warning: #eab308;
+  --armai-transition: 0.5s ease-in-out;
 }
 
 .dark {
-  --armai-bg: #0b0b0b;
-  --armai-surface: #121212;
+  --armai-bg: #0a0a0a;
+  --armai-surface: #0f0f0f;
   --armai-surface-elevated: #1a1a1a;
-  --armai-border: rgba(255, 255, 255, 0.12);
+  --armai-border: rgba(212, 175, 55, 0.2);
   --armai-border-muted: rgba(255, 255, 255, 0.08);
   --armai-text: #fafafa;
   --armai-text-secondary: #a1a1aa;
   --armai-text-muted: #71717a;
 }
 
-/* Glassmorphism cards */
+/* Glassmorphism cards — luxury gold border */
 .glass-card {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(26, 26, 26, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--armai-border);
+  box-shadow: 0 0 20px var(--armai-gold-glow);
 }
 .dark .glass-card {
-  background: rgba(26, 26, 26, 0.7);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 15, 15, 0.8);
+  border-color: var(--armai-border);
 }
 
-/* Gradient accent */
+/* Luxury gradient accent */
 .gradient-accent {
-  background: linear-gradient(135deg, var(--armai-gradient-start), var(--armai-gradient-end));
+  background: linear-gradient(to right, var(--armai-gradient-start), var(--armai-gradient-end));
+}
+
+/* Luxury button glow */
+.luxury-glow {
+  box-shadow: 0 0 10px var(--armai-gold-glow);
+}
+
+/* Subtle velvet texture (optional) */
+.velvet-bg {
+  background-image: radial-gradient(ellipse at top, rgba(212, 175, 55, 0.03) 0%, transparent 50%);
 }
 
 @tailwind base;
@@ -66,17 +79,15 @@
 body {
   margin: 0;
   font-family:
-    'Phetsarath OT',
-    'Noto Sans Lao',
-    'Noto Sans Thai',
-    system-ui,
-    -apple-system,
-    sans-serif;
+    'Phetsarath OT', 'IBM Plex Sans', 'Noto Sans Lao', 'Noto Sans Thai', system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--armai-text);
   background: var(--armai-bg);
   -webkit-font-smoothing: antialiased;
+  transition:
+    background-color var(--armai-transition),
+    color var(--armai-transition);
 }
 
 #root {
@@ -117,7 +128,7 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--armai-primary);
-  box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.2);
+  box-shadow: 0 0 0 2px var(--armai-gold-glow);
 }
 
 /* Accessibility: focus visible ring */

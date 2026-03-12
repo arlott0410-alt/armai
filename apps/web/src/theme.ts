@@ -1,5 +1,5 @@
 /**
- * ArmAI Enterprise theme: neutral palette (#0070f3, #f0f0f0, #4caf50).
+ * ArmAI Enterprise theme: luxury palette — gold #D4AF37, velvet black #1A1A1A.
  * Use for inline styles; CSS vars in index.css for Tailwind/dark mode.
  */
 
@@ -10,26 +10,27 @@ export const theme = {
   border: 'var(--armai-border)',
   borderMuted: 'var(--armai-border-muted)',
 
-  primary: '#0070f3',
-  primaryHover: '#0060df',
-  highlight: '#0070f3',
-  goldMuted: 'rgba(0, 112, 243, 0.2)',
-  secondary: '#f0f0f0',
-  accent: '#4caf50',
-  accentHover: '#43a047',
+  primary: '#D4AF37',
+  primaryHover: '#B8860B',
+  highlight: '#D4AF37',
+  goldMuted: 'rgba(212, 175, 55, 0.2)',
+  goldGlow: 'rgba(212, 175, 55, 0.3)',
+  secondary: '#1A1A1A',
+  accent: '#FFFFFF',
+  accentHover: '#f0f0f0',
 
   text: 'var(--armai-text)',
   textSecondary: 'var(--armai-text-secondary)',
   textMuted: 'var(--armai-text-muted)',
 
-  success: '#4caf50',
-  successMuted: 'rgba(76, 175, 80, 0.2)',
+  success: '#22c55e',
+  successMuted: 'rgba(34, 197, 94, 0.2)',
   warning: '#eab308',
   warningMuted: 'rgba(234, 179, 8, 0.2)',
   danger: '#ef4444',
   dangerMuted: 'rgba(239, 68, 68, 0.2)',
-  info: '#0070f3',
-  infoMuted: 'rgba(0, 112, 243, 0.15)',
+  info: '#D4AF37',
+  infoMuted: 'rgba(212, 175, 55, 0.15)',
 } as const
 
 export const spacing = {
