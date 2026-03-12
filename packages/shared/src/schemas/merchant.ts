@@ -15,6 +15,11 @@ export const updateMerchantSettingsBodySchema = z.object({
   bank_parser_id: z.string().uuid().nullable().optional(),
   webhook_verify_token: z.string().max(255).nullable().optional(),
   auto_send_shipping_confirmation: z.boolean().optional(),
+  telegram_notify_order_paid: z.boolean().optional(),
+  telegram_allow_shipment_confirmation: z.boolean().optional(),
+  telegram_allow_ai_escalation: z.boolean().optional(),
+  telegram_require_authorized_admins: z.boolean().optional(),
+  telegram_auto_send_shipment_confirmation: z.boolean().optional(),
 });
 
 export type UpdateMerchantSettingsBody = z.infer<typeof updateMerchantSettingsBodySchema>;

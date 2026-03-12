@@ -198,6 +198,8 @@ export interface OrderDetailResponse extends OrderRow {
   payment_method_events: { id: string; from_method: string; to_method: string; switch_result: string; reason: string | null; requested_by_type: string; created_at: string }[];
   shipments?: ShipmentRow[];
   fulfillment_events?: FulfillmentEventRow[];
+  telegram_operation_events?: { id: string; event_type: string; event_note: string | null; actor_type: string; created_at: string }[];
+  shipment_images?: { id: string; image_url: string | null; source: string; processing_status: string; created_at: string }[];
 }
 
 export interface CreateShipmentBody {
@@ -481,12 +483,91 @@ export interface MerchantSettingsResponse {
   bank_parser_id: string | null;
   webhook_verify_token: string | null;
   auto_send_shipping_confirmation?: boolean;
+  telegram_notify_order_paid?: boolean;
+  telegram_allow_shipment_confirmation?: boolean;
+  telegram_allow_ai_escalation?: boolean;
+  telegram_require_authorized_admins?: boolean;
+  telegram_auto_send_shipment_confirmation?: boolean;
 }
 
 export const settingsApi = {
   get: (token: string) => request<MerchantSettingsResponse>('/settings', { token }),
-  update: (token: string, body: Partial<{ ai_system_prompt: string | null; bank_parser_id: string | null; webhook_verify_token: string | null; auto_send_shipping_confirmation?: boolean }>) =>
+  update: (token: string, body: Partial<MerchantSettingsResponse>) =>
     request<{ ok: boolean }>('/settings', { method: 'PATCH', token, body }),
+};
+
+export interface TelegramConnectionSummary {
+  id: string;
+  merchant_id: string;
+  telegram_group_id: string;
+  telegram_group_title: string | null;
+  is_active: boolean;
+  has_bot_token: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TelegramAdminRow {
+  id: string;
+  merchant_id: string;
+  telegram_user_id: string;
+  telegram_username: string | null;
+  telegram_display_name: string | null;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TelegramSettingsResponse {
+  merchantId?: string;
+  connection: TelegramConnectionSummary | null;
+  settings: Partial<MerchantSettingsResponse>;
+}
+
+export const telegramApi = {
+  get: (token: string) => request<TelegramSettingsResponse>('/merchant/telegram', { token }),
+  update: (token: string, body: { telegram_group_id?: string; telegram_group_title?: string | null; is_active?: boolean; bot_token_encrypted_or_bound_reference?: string | null }) =>
+    request<{ ok: boolean }>('/merchant/telegram', { method: 'PATCH', token, body }),
+  admins: (token: string) => request<{ admins: TelegramAdminRow[] }>('/merchant/telegram/admins', { token }),
+  addAdmin: (token: string, body: { telegram_user_id: string; telegram_username?: string | null; telegram_display_name?: string | null; role?: string }) =>
+    request<{ admin: TelegramAdminRow }>('/merchant/telegram/admins', { method: 'POST', token, body }),
+  updateAdmin: (token: string, adminId: string, body: Partial<{ telegram_username: string | null; telegram_display_name: string | null; role: string; is_active: boolean }>) =>
+    request<{ admin: TelegramAdminRow }>(`/merchant/telegram/admins/${adminId}`, { method: 'PATCH', token, body }),
+  test: (token: string) => request<{ ok: boolean; sent: boolean }>('/merchant/telegram/test', { method: 'POST', token }),
+};
+
+export interface TelegramOperationEventRow {
+  id: string;
+  merchant_id: string;
+  related_order_id: string | null;
+  related_shipment_image_id: string | null;
+  event_type: string;
+  event_note: string | null;
+  actor_type: string;
+  actor_id: string | null;
+  created_at: string;
+}
+
+export interface ShipmentImageRow {
+  id: string;
+  merchant_id: string;
+  order_id: string | null;
+  source: string;
+  image_url: string | null;
+  processing_status: string;
+  created_at: string;
+}
+
+export interface OperationsFeedResponse {
+  events: TelegramOperationEventRow[];
+  ambiguous_shipment_images: ShipmentImageRow[];
+  awaiting_order_reference: ShipmentImageRow[];
+}
+
+export const operationsFeedApi = {
+  getFeed: (token: string, limit?: number) =>
+    request<OperationsFeedResponse>(`/merchant/operations/feed${limit != null ? `?limit=${limit}` : ''}`, { token }),
 };
 
 export const ordersApi = {

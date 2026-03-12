@@ -49,6 +49,8 @@ export default function MerchantLayout() {
           <NavLink to="/merchant/promotions" style={navStyle}>Promotions</NavLink>
           <NavLink to="/merchant/payment-accounts" style={navStyle}>Payment accounts</NavLink>
           <NavLink to="/merchant/bank-sync" style={navStyle}>Bank Sync</NavLink>
+          <NavLink to="/merchant/operations" style={navStyle}>Operations</NavLink>
+          <NavLink to="/merchant/telegram" style={navStyle}>Telegram</NavLink>
           <NavLink to="/merchant/settings" style={navStyle}>Settings</NavLink>
         </nav>
         <div style={{ marginTop: 'auto', paddingTop: 24, borderTop: `1px solid ${theme.borderMuted}` }}>

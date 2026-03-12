@@ -177,10 +177,27 @@ export default function MerchantOrderDetail() {
               <span style={{ fontSize: 12, color: theme.textMuted, marginLeft: 12 }}>Fulfillment status</span>
               <FulfillmentStatusBadge status={order.fulfillment_status} />
             </div>
+            {(order.shipment_images?.length ?? 0) > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>Shipment images</div>
+                {(order.shipment_images ?? []).map((img: { id: string; image_url: string | null; source: string; processing_status: string; created_at: string }) => (
+                  <div key={img.id} style={{ display: 'inline-block', marginRight: 12, marginBottom: 8 }}>
+                    {img.image_url ? (
+                      <a href={img.image_url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', border: `1px solid ${theme.borderMuted}`, borderRadius: 8, overflow: 'hidden', maxWidth: 160 }}>
+                        <img src={img.image_url} alt="Shipment" style={{ width: 160, height: 120, objectFit: 'cover' }} />
+                      </a>
+                    ) : (
+                      <div style={{ width: 160, height: 120, background: theme.surfaceElevated, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: theme.textMuted }}>No preview</div>
+                    )}
+                    <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>Source: {img.source} · {img.processing_status}</div>
+                  </div>
+                ))}
+              </div>
+            )}
             {(order.shipments?.length ?? 0) > 0 && (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 8 }}>Shipments</div>
-                {(order.shipments ?? []).map((s: ShipmentRow) => (
+                {(order.shipments ?? []).map((s: ShipmentRow & { shipment_proof_mode?: string; customer_notified_at?: string | null }) => (
                   <div
                     key={s.id}
                     style={{
@@ -192,6 +209,12 @@ export default function MerchantOrderDetail() {
                       fontSize: 13,
                     }}
                   >
+                    {(s as { shipment_proof_mode?: string }).shipment_proof_mode === 'image' && (
+                      <div style={{ fontSize: 11, color: theme.primary, marginBottom: 6 }}>Proof: image (from Telegram or dashboard)</div>
+                    )}
+                    {(s as { customer_notified_at?: string | null }).customer_notified_at && (
+                      <div style={{ fontSize: 11, color: theme.success, marginBottom: 6 }}>Customer notified</div>
+                    )}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 8 }}>
                       <span><strong style={{ color: theme.textMuted }}>Courier</strong> {s.courier_name ?? '—'}</span>
                       <span><strong style={{ color: theme.textMuted }}>Tracking</strong> {s.tracking_number ?? '—'}</span>
@@ -286,13 +309,24 @@ export default function MerchantOrderDetail() {
                 </div>
               </div>
             )}
-            {order.fulfillment_events?.length ? (
+            {(order.fulfillment_events?.length || order.telegram_operation_events?.length) ? (
               <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${theme.borderMuted}` }}>
-                <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 6 }}>Fulfillment history</div>
+                <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 6 }}>Event timeline</div>
                 <ul style={{ margin: 0, paddingLeft: 20, fontSize: 12, color: theme.textSecondary }}>
-                  {order.fulfillment_events.slice(0, 10).map((ev) => (
-                    <li key={ev.id}>{ev.event_type} — {new Date(ev.created_at).toLocaleString()}</li>
-                  ))}
+                  {[
+                    ...(order.fulfillment_events ?? []).map((ev) => ({ id: ev.id, type: ev.event_type, at: ev.created_at, source: 'fulfillment' })),
+                    ...(order.telegram_operation_events ?? []).map((ev) => ({ id: ev.id, type: ev.event_type, at: ev.created_at, source: 'telegram' })),
+                  ]
+                    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+                    .slice(0, 15)
+                    .map((ev) => (
+                      <li key={ev.id}>
+                        <span style={{ color: theme.primary }}>{ev.type}</span>
+                        {ev.source === 'telegram' && <span style={{ color: theme.textMuted, marginLeft: 6 }}>(Telegram)</span>}
+                        {' — '}
+                        {new Date(ev.at).toLocaleString()}
+                      </li>
+                    ))}
                 </ul>
               </div>
             ) : null}

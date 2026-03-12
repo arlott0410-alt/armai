@@ -7,6 +7,7 @@ import * as codSettings from '../../services/cod-settings.js';
 import * as paymentMethodSwitch from '../../services/payment-method-switch.js';
 import * as paymentAccounts from '../../services/payment-accounts.js';
 import * as fulfillment from '../../services/fulfillment.js';
+import * as telegram from '../../services/telegram.js';
 import { PAYMENT_METHOD, PAYMENT_SWITCH_RESULT, ORDER_COD_STATUS, PAYMENT_STATUS, ORDER_STATUS } from '@armai/shared';
 import { createShipmentBodySchema } from '@armai/shared';
 
@@ -223,6 +224,18 @@ app.post('/:orderId/cod/mark-collected', async (c) => {
     })
     .eq('id', orderId)
     .eq('merchant_id', merchantId);
+  const order = await orderService.getOrder(supabase, merchantId, orderId);
+  const { data: items } = await supabase.from('order_items').select('product_name_snapshot, quantity').eq('order_id', orderId);
+  const itemsSummary = (items ?? []).map((i: { product_name_snapshot: string; quantity: number }) => `${i.product_name_snapshot} x${i.quantity}`).join(', ').slice(0, 200);
+  telegram.notifyOrderPaidToTelegram(supabase, {
+    merchantId,
+    orderId,
+    orderReferenceCode: order.reference_code ?? null,
+    customerName: order.customer_name ?? null,
+    amount: order.amount ?? null,
+    paymentMethod: order.payment_method ?? null,
+    itemsSummary,
+  }).catch(() => {});
   const detail = await orderDetail.getOrderDetail(supabase, merchantId, orderId);
   return c.json({ ok: true, order: detail });
 });

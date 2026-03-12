@@ -1,0 +1,6 @@
+-- ArmAI: Telegram tables need insert from service role (webhook). Policies above allow member/super for app; webhook uses service role which bypasses RLS.
+-- No additional policies needed; webhook does not use RLS context.
+-- Ensure telegram_messages and telegram_operation_events can be inserted by backend (service role).
+-- RLS is enabled; service role bypasses RLS. Authenticated merchant routes use member_or_super.
+-- Done in 058_telegram_rls.sql.
+-- This file reserved for any future telegram-specific policy refinements.

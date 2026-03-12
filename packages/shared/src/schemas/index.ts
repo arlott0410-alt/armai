@@ -8,3 +8,4 @@ export * from './bank.js';
 export * from './catalog.js';
 export * from './knowledge.js';
 export * from './payment.js';
+export * from './telegram.js';

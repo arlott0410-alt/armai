@@ -4,6 +4,7 @@ import { authMiddleware, resolveMerchant, requireMerchantAdmin } from '../middle
 import { getSupabaseAdmin } from '../lib/supabase.js';
 import * as orderService from '../services/orders.js';
 import * as orderDraft from '../services/order-draft.js';
+import * as telegram from '../services/telegram.js';
 import { z } from 'zod';
 import { confirmMatchBodySchema } from '@armai/shared';
 
@@ -24,7 +25,21 @@ app.post('/confirm-match', async (c) => {
   }
   const supabase = getSupabaseAdmin(c.env);
   const merchantId = c.get('merchantId');
-  await orderService.confirmMatch(supabase, merchantId, parsed.data.matching_result_id, parsed.data.confirm);
+  const result = await orderService.confirmMatch(supabase, merchantId, parsed.data.matching_result_id, parsed.data.confirm);
+  if (parsed.data.confirm && result.orderId) {
+    const order = await orderService.getOrder(supabase, merchantId, result.orderId);
+    const { data: items } = await supabase.from('order_items').select('product_name_snapshot, quantity').eq('order_id', result.orderId);
+    const itemsSummary = (items ?? []).map((i: { product_name_snapshot: string; quantity: number }) => `${i.product_name_snapshot} x${i.quantity}`).join(', ').slice(0, 200);
+    telegram.notifyOrderPaidToTelegram(supabase, {
+      merchantId,
+      orderId: result.orderId,
+      orderReferenceCode: order.reference_code ?? null,
+      customerName: order.customer_name ?? null,
+      amount: order.amount ?? null,
+      paymentMethod: order.payment_method ?? null,
+      itemsSummary,
+    }).catch(() => {});
+  }
   return c.json({ ok: true });
 });
 

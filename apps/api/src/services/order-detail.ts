@@ -7,13 +7,15 @@ import { PAYMENT_METHOD, PAYMENT_STATUS } from '@armai/shared';
 
 export async function getOrderDetail(supabase: SupabaseClient, merchantId: string, orderId: string) {
   const order = await orderService.getOrder(supabase, merchantId, orderId);
-  const [shipping, codDetails, paymentTarget, paymentMethodEvents, shipments, fulfillmentEvents] = await Promise.all([
+  const [shipping, codDetails, paymentTarget, paymentMethodEvents, shipments, fulfillmentEvents, telegramEvents, shipmentImages] = await Promise.all([
     supabase.from('order_shipping_details').select('*').eq('order_id', orderId).eq('merchant_id', merchantId).maybeSingle(),
     supabase.from('order_cod_details').select('*').eq('order_id', orderId).eq('merchant_id', merchantId).eq('is_active', true).maybeSingle(),
     orderDraft.getOrderPaymentTarget(supabase, merchantId, orderId),
     supabase.from('order_payment_method_events').select('*').eq('order_id', orderId).eq('merchant_id', merchantId).order('created_at', { ascending: false }),
     supabase.from('order_shipments').select('*').eq('order_id', orderId).eq('merchant_id', merchantId).order('created_at', { ascending: false }),
     supabase.from('order_fulfillment_events').select('*').eq('order_id', orderId).eq('merchant_id', merchantId).order('created_at', { ascending: false }),
+    supabase.from('telegram_operation_events').select('*').eq('related_order_id', orderId).eq('merchant_id', merchantId).order('created_at', { ascending: false }),
+    supabase.from('shipment_images').select('*').eq('order_id', orderId).eq('merchant_id', merchantId).order('created_at', { ascending: false }),
   ]);
   const items = await supabase.from('order_items').select('*').eq('order_id', orderId);
   return {
@@ -25,6 +27,8 @@ export async function getOrderDetail(supabase: SupabaseClient, merchantId: strin
     payment_method_events: paymentMethodEvents.data ?? [],
     shipments: shipments.data ?? [],
     fulfillment_events: fulfillmentEvents.data ?? [],
+    telegram_operation_events: telegramEvents.data ?? [],
+    shipment_images: shipmentImages.data ?? [],
   };
 }
 

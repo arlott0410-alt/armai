@@ -38,6 +38,11 @@ export default function MerchantSettings() {
   const [bankParserId, setBankParserId] = useState('');
   const [webhookToken, setWebhookToken] = useState('');
   const [autoSendShippingConfirmation, setAutoSendShippingConfirmation] = useState(false);
+  const [telegramNotifyOrderPaid, setTelegramNotifyOrderPaid] = useState(false);
+  const [telegramAllowShipmentConfirmation, setTelegramAllowShipmentConfirmation] = useState(false);
+  const [telegramAllowAiEscalation, setTelegramAllowAiEscalation] = useState(false);
+  const [telegramRequireAuthorizedAdmins, setTelegramRequireAuthorizedAdmins] = useState(true);
+  const [telegramAutoSendShipmentConfirmation, setTelegramAutoSendShipmentConfirmation] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -57,6 +62,11 @@ export default function MerchantSettings() {
         setBankParserId(s.bank_parser_id ?? '');
         setWebhookToken(s.webhook_verify_token ?? '');
         setAutoSendShippingConfirmation(s.auto_send_shipping_confirmation ?? false);
+        setTelegramNotifyOrderPaid(s.telegram_notify_order_paid ?? false);
+        setTelegramAllowShipmentConfirmation(s.telegram_allow_shipment_confirmation ?? false);
+        setTelegramAllowAiEscalation(s.telegram_allow_ai_escalation ?? false);
+        setTelegramRequireAuthorizedAdmins(s.telegram_require_authorized_admins ?? true);
+        setTelegramAutoSendShipmentConfirmation(s.telegram_auto_send_shipment_confirmation ?? true);
         setCod(codSettings);
       })
       .catch((e) => setError(e.message))
@@ -75,6 +85,11 @@ export default function MerchantSettings() {
         bank_parser_id: bankParserId.trim() || null,
         webhook_verify_token: webhookToken.trim() || null,
         auto_send_shipping_confirmation: autoSendShippingConfirmation,
+        telegram_notify_order_paid: telegramNotifyOrderPaid,
+        telegram_allow_shipment_confirmation: telegramAllowShipmentConfirmation,
+        telegram_allow_ai_escalation: telegramAllowAiEscalation,
+        telegram_require_authorized_admins: telegramRequireAuthorizedAdmins,
+        telegram_auto_send_shipment_confirmation: telegramAutoSendShipmentConfirmation,
       });
       setSaved(true);
     } catch (err) {
@@ -121,6 +136,35 @@ export default function MerchantSettings() {
           />
           <div style={hintStyle}>
             If your admin has configured a bank parser, enter its ID here. Otherwise leave blank. Do not guess.
+          </div>
+        </PanelCard>
+
+        <PanelCard
+          title="Telegram operations"
+          subtitle="Configure Telegram group behavior. Set up the bot and group under Operations → Telegram."
+        >
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <input type="checkbox" checked={telegramNotifyOrderPaid} onChange={(e) => setTelegramNotifyOrderPaid(e.target.checked)} />
+            <span style={{ fontSize: 13 }}>Notify Telegram when order is paid</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <input type="checkbox" checked={telegramAllowShipmentConfirmation} onChange={(e) => setTelegramAllowShipmentConfirmation(e.target.checked)} />
+            <span style={{ fontSize: 13 }}>Allow shipment confirmation from Telegram (upload slip image)</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <input type="checkbox" checked={telegramAllowAiEscalation} onChange={(e) => setTelegramAllowAiEscalation(e.target.checked)} />
+            <span style={{ fontSize: 13 }}>Send AI escalations to Telegram</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <input type="checkbox" checked={telegramRequireAuthorizedAdmins} onChange={(e) => setTelegramRequireAuthorizedAdmins(e.target.checked)} />
+            <span style={{ fontSize: 13 }}>Require authorized admins for Telegram actions</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <input type="checkbox" checked={telegramAutoSendShipmentConfirmation} onChange={(e) => setTelegramAutoSendShipmentConfirmation(e.target.checked)} />
+            <span style={{ fontSize: 13 }}>Auto-send shipment confirmation to customer after image linked</span>
+          </label>
+          <div style={hintStyle}>
+            Manage bot, group ID, and admins under <a href="/merchant/telegram" style={{ color: theme.primary }}>Telegram</a>.
           </div>
         </PanelCard>
 
