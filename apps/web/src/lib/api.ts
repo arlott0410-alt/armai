@@ -111,8 +111,17 @@ export interface AdminPlanRow {
   updated_at: string
 }
 
+/** Subscription bank as returned by GET /api/plans (public shape). */
+export interface SubscriptionBankPublic {
+  name: string
+  account_number: string
+  holder: string
+  qr_image_url: string | null
+}
+
 export const plansApi = {
-  list: () => request<{ plans: PlanPublic[] }>('/plans'),
+  list: () =>
+    request<{ plans: PlanPublic[]; subscription_bank: SubscriptionBankPublic | null }>('/plans'),
 }
 
 export type SubscribeType = 'trial' | 'monthly' | 'annual'
@@ -151,7 +160,11 @@ export interface SystemSettingsResponse {
 }
 
 export const systemSettingsApi = {
-  get: () => request<SystemSettingsResponse>('/system/settings'),
+  /** Pass cacheBust: true when opening bank modal or on window focus so merchants see latest after super admin saves. */
+  get: (cacheBust?: boolean) =>
+    request<SystemSettingsResponse>(
+      cacheBust ? `/system/settings?_t=${Date.now()}` : '/system/settings'
+    ),
   patch: (
     token: string,
     body: {

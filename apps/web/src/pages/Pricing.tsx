@@ -74,6 +74,18 @@ export default function Pricing() {
       })
   }, [])
 
+  // Revalidate bank details when user returns to tab so they see updates after super admin saves
+  useEffect(() => {
+    const onFocus = () => {
+      systemSettingsApi
+        .get(true)
+        .then((r) => setBank(r.bank))
+        .catch(() => setBank(null))
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
   useEffect(() => {
     plansApi
       .list()
@@ -125,9 +137,9 @@ export default function Pricing() {
     setError(null)
     setPendingMessage(null)
     setSlipUploaded(false)
-    // Refetch bank details when opening modal so we show latest after super admin saves
+    // Refetch bank details with cache-bust when opening modal so we show latest after super admin saves
     systemSettingsApi
-      .get()
+      .get(true)
       .then((r) => setBank(r.bank))
       .catch(() => setBank(null))
     setPaymentId(null)
@@ -409,18 +421,34 @@ export default function Pricing() {
                         : t('common.loading')}
                     </p>
                   ) : (
-                    <div className="rounded-lg bg-[var(--armai-bg)] p-3 text-sm text-[var(--armai-text)] font-mono mb-3">
-                      {bank.bank_name} — {bank.account_holder}
-                      <br />
-                      {bank.account_number}
-                      <br />
-                      ຫມາຍເຫດ: ຊື່ຮ້ານ / ເບີຕິດຕໍ່
+                    <div className="rounded-lg bg-[var(--armai-bg)] p-3 text-sm text-[var(--armai-text)] space-y-1 mb-3">
+                      <div>
+                        <span className="text-[var(--armai-text-muted)]">
+                          {t('pricing.bankName')}:{' '}
+                        </span>
+                        {bank.bank_name}
+                      </div>
+                      <div>
+                        <span className="text-[var(--armai-text-muted)]">
+                          {t('pricing.accountNumber')}:{' '}
+                        </span>
+                        {bank.account_number}
+                      </div>
+                      <div>
+                        <span className="text-[var(--armai-text-muted)]">
+                          {t('pricing.accountHolder')}:{' '}
+                        </span>
+                        {bank.account_holder}
+                      </div>
+                      <p className="text-xs text-[var(--armai-text-muted)] mt-1">
+                        ຫມາຍເຫດ: ຊື່ຮ້ານ / ເບີຕິດຕໍ່
+                      </p>
                       {bank.qr_image_url && (
                         <div className="mt-2">
                           <img
                             src={getSlipUrl(bank.qr_image_url)}
-                            alt="QR"
-                            className="h-20 w-20 object-contain"
+                            alt="QR Code"
+                            className="w-48 h-48 object-contain border border-[var(--armai-border)] rounded"
                           />
                         </div>
                       )}

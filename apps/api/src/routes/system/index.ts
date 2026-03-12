@@ -42,19 +42,22 @@ function normalizeBank(value: Record<string, unknown> | null) {
   }
 }
 
-/** GET /api/system/settings — public read for bank details. Cached (Cache API + KV). */
+/** GET /api/system/settings — public read for bank details. Cached (Cache API + KV). Cache-bust with ?_t=* to force fresh (e.g. after super admin saves). */
 app.get('/settings', async (c) => {
   const url = c.req.url
+  const hasCacheBust = new URL(url).searchParams.has('_t')
   logRequest('/api/system/settings', c.get('correlationId') as string | undefined, {
     method: 'GET',
   })
 
-  const cached = await getCachedResponse(url)
-  if (cached) {
-    return new Response(cached.body, {
-      status: cached.status,
-      headers: { ...Object.fromEntries(cached.headers), ...cacheControlHeaders() },
-    })
+  if (!hasCacheBust) {
+    const cached = await getCachedResponse(url)
+    if (cached) {
+      return new Response(cached.body, {
+        status: cached.status,
+        headers: { ...Object.fromEntries(cached.headers), ...cacheControlHeaders() },
+      })
+    }
   }
 
   const kv = c.env.SETTINGS_KV
@@ -69,7 +72,7 @@ app.get('/settings', async (c) => {
         const headers = new Headers(res.headers)
         Object.entries(cacheControlHeaders()).forEach(([k, v]) => headers.set(k, v))
         const response = new Response(res.body, { status: res.status, headers })
-        await setCachedResponse(url, response.clone())
+        if (!hasCacheBust && bank != null) await setCachedResponse(url, response.clone())
         return response
       }
     } catch {
@@ -97,8 +100,8 @@ app.get('/settings', async (c) => {
   const headers = new Headers(res.headers)
   Object.entries(cacheControlHeaders()).forEach(([k, v]) => headers.set(k, v))
   const response = new Response(res.body, { status: res.status, headers })
-  // Only cache when bank is set so Pricing sees updates after super admin saves (avoid serving stale null)
-  if (bank != null) await setCachedResponse(url, response.clone())
+  // Only cache when bank is set and no cache-bust param, so Pricing sees updates after super admin saves
+  if (bank != null && !hasCacheBust) await setCachedResponse(url, response.clone())
   return response
 })
 
@@ -161,10 +164,15 @@ app.patch('/settings', authMiddleware, requireSuperAdmin, async (c) => {
         // ignore
       }
     }
-    // Invalidate GET cache so Pricing page shows new bank details on next load
-    const getSettingsUrl = new URL(c.req.url)
+    // Invalidate GET caches so Pricing page shows new bank details on next load
+    const baseUrl = new URL(c.req.url)
+    const getSettingsUrl = new URL(baseUrl)
     getSettingsUrl.search = ''
     await deleteCachedResponse(getSettingsUrl.toString())
+    const getPlansUrl = new URL(baseUrl)
+    getPlansUrl.pathname = baseUrl.pathname.replace(/\/system\/settings\/?$/, '/plans')
+    getPlansUrl.search = ''
+    await deleteCachedResponse(getPlansUrl.toString())
     // Audit: who changed subscription bank and when (no sensitive data in details)
     await supabase.from('audit_logs').insert({
       actor_id: auth.userId,
