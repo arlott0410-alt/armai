@@ -3,6 +3,7 @@ import type { Env } from '../env.js';
 import { authMiddleware, resolveMerchant, requireMerchantAdmin } from '../middleware/auth.js';
 import { getSupabaseAdmin } from '../lib/supabase.js';
 import * as merchantService from '../services/merchant.js';
+import * as contextCache from '../services/ai-context-cache.js';
 import { updateMerchantSettingsBodySchema } from '@armai/shared';
 
 const app = new Hono<{
@@ -44,6 +45,7 @@ app.patch('/', async (c) => {
     { onConflict: 'merchant_id' }
   );
   if (error) return c.json({ error: error.message }, 400);
+  contextCache.invalidateMerchant(merchantId);
   return c.json({ ok: true });
 });
 

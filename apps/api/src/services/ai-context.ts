@@ -3,6 +3,8 @@ import * as catalog from './catalog.js';
 import * as knowledge from './knowledge.js';
 import * as orderDraft from './order-draft.js';
 import * as codSettings from './cod-settings.js';
+import * as contextCache from './ai-context-cache.js';
+import * as conversationSummary from './conversation-summary.js';
 
 const PLATFORM_SYSTEM_PROMPT = `You are a merchant chatbot. Rules:
 - Never invent products, prices, payment accounts, or QR codes. Use only the structured context provided.
@@ -17,6 +19,8 @@ export interface AiContextInput {
   conversationId?: string | null;
   orderId?: string | null;
   customerMessage?: string;
+  /** When true, include conversation summary in structured context (best-effort). */
+  useConversationSummary?: boolean;
 }
 
 export interface BuiltContext {
@@ -33,14 +37,41 @@ export interface BuiltContext {
     shipmentForOrder: unknown | null;
     /** When conversation/order is linked to a unified customer, recent orders and interaction summary. */
     unifiedCustomerSummary: string | null;
+    /** Best-effort compact summary; raw history remains source of truth. */
+    conversationSummary: string | null;
   };
 }
 
 /**
- * Build AI runtime context from DB for one merchant. No hardcoded products/prices/accounts.
+ * Load catalog/knowledge/COD from DB or cache. Never caches order/payment/shipment.
  */
-export async function buildAiContext(supabase: SupabaseClient, input: AiContextInput): Promise<BuiltContext> {
-  const { merchantId, merchantPrompt, conversationId, orderId } = input;
+async function loadCachedCatalogAndSettings(supabase: SupabaseClient, merchantId: string) {
+  const cached = {
+    products: contextCache.get<unknown[]>(merchantId, 'products'),
+    categories: contextCache.get<unknown[]>(merchantId, 'categories'),
+    faqs: contextCache.get<unknown[]>(merchantId, 'faqs'),
+    promotions: contextCache.get<unknown[]>(merchantId, 'promotions'),
+    knowledgeEntries: contextCache.get<unknown[]>(merchantId, 'knowledge_entries'),
+    codSettings: contextCache.get<unknown>(merchantId, 'cod_settings'),
+  };
+  if (
+    cached.products != null &&
+    cached.categories != null &&
+    cached.faqs != null &&
+    cached.promotions != null &&
+    cached.knowledgeEntries != null &&
+    cached.codSettings !== undefined
+  ) {
+    const codRow = cached.codSettings as Record<string, unknown> | null;
+    return {
+      products: cached.products,
+      categories: cached.categories,
+      faqs: cached.faqs,
+      promotions: cached.promotions,
+      knowledgeEntries: cached.knowledgeEntries,
+      codSettingsRow: codRow,
+    };
+  }
   const [products, categories, faqs, promotions, knowledgeEntries, codSettingsRow] = await Promise.all([
     catalog.listProducts(supabase, merchantId, { status: 'active', aiVisibleOnly: true }),
     catalog.listCategories(supabase, merchantId, true),
@@ -49,6 +80,38 @@ export async function buildAiContext(supabase: SupabaseClient, input: AiContextI
     knowledge.listKnowledgeEntries(supabase, merchantId, { activeOnly: true }),
     codSettings.getMerchantCodSettings(supabase, merchantId),
   ]);
+  contextCache.set(merchantId, 'products', products);
+  contextCache.set(merchantId, 'categories', categories);
+  contextCache.set(merchantId, 'faqs', faqs);
+  contextCache.set(merchantId, 'promotions', promotions);
+  contextCache.set(merchantId, 'knowledge_entries', knowledgeEntries);
+  contextCache.set(
+    merchantId,
+    'cod_settings',
+    codSettingsRow
+      ? {
+          enable_cod: codSettingsRow.enable_cod,
+          cod_min_order_amount: codSettingsRow.cod_min_order_amount,
+          cod_max_order_amount: codSettingsRow.cod_max_order_amount,
+          cod_fee_amount: codSettingsRow.cod_fee_amount,
+          require_phone_for_cod: codSettingsRow.require_phone_for_cod,
+          require_full_address_for_cod: codSettingsRow.require_full_address_for_cod,
+          cod_requires_manual_confirmation: codSettingsRow.cod_requires_manual_confirmation,
+          cod_notes_for_ai: codSettingsRow.cod_notes_for_ai,
+        }
+      : null
+  );
+  return { products, categories, faqs, promotions, knowledgeEntries, codSettingsRow };
+}
+
+/**
+ * Build AI runtime context from DB for one merchant. No hardcoded products/prices/accounts.
+ * Uses cache for catalog/knowledge/COD only. Order, payment, shipment, customer: always fresh from DB.
+ */
+export async function buildAiContext(supabase: SupabaseClient, input: AiContextInput): Promise<BuiltContext> {
+  const { merchantId, merchantPrompt, conversationId, orderId, useConversationSummary = true } = input;
+  const { products, categories, faqs, promotions, knowledgeEntries, codSettingsRow } =
+    await loadCachedCatalogAndSettings(supabase, merchantId);
   let currentOrderSummary: string | null = null;
   let paymentTargetForOrder: unknown = null;
   let shipmentContext: unknown = null;
@@ -163,8 +226,36 @@ export async function buildAiContext(supabase: SupabaseClient, input: AiContextI
     unifiedCustomerSummary = [orderLines, lastLine].filter(Boolean).join(' ') || 'Unified customer has linked channel identities.';
   }
 
+  let conversationSummaryText: string | null = null;
+  if (useConversationSummary && conversationId) {
+    const summaryRow = await conversationSummary.getConversationSummary(supabase, merchantId, conversationId);
+    if (summaryRow) {
+      const parts = [
+        summaryRow.recent_intent && `Recent intent: ${summaryRow.recent_intent}`,
+        summaryRow.recent_product_focus && `Product focus: ${summaryRow.recent_product_focus}`,
+        summaryRow.active_order_id && `Active order: ${summaryRow.active_order_id}`,
+        summaryRow.active_payment_method && `Payment method: ${summaryRow.active_payment_method}`,
+        summaryRow.latest_payment_state && `Payment state: ${summaryRow.latest_payment_state}`,
+        summaryRow.latest_fulfillment_state && `Fulfillment state: ${summaryRow.latest_fulfillment_state}`,
+      ].filter(Boolean);
+      conversationSummaryText = parts.length ? parts.join('. ') : null;
+    }
+  }
+
   const merchantSection = merchantPrompt ? `\n\nMerchant instructions:\n${merchantPrompt}` : '';
   const systemPrompt = PLATFORM_SYSTEM_PROMPT + merchantSection;
+  const codSettingsShaped = codSettingsRow && typeof codSettingsRow === 'object' && 'enable_cod' in codSettingsRow
+    ? (codSettingsRow as {
+        enable_cod: boolean;
+        cod_min_order_amount: number | null;
+        cod_max_order_amount: number | null;
+        cod_fee_amount: number;
+        require_phone_for_cod: boolean;
+        require_full_address_for_cod: boolean;
+        cod_requires_manual_confirmation: boolean;
+        cod_notes_for_ai: string | null;
+      })
+    : null;
   return {
     systemPrompt,
     structuredContext: {
@@ -175,18 +266,19 @@ export async function buildAiContext(supabase: SupabaseClient, input: AiContextI
       knowledgeEntries,
       currentOrderSummary,
       paymentTargetForOrder,
-      codSettings: codSettingsRow ? {
-        enable_cod: codSettingsRow.enable_cod,
-        cod_min_order_amount: codSettingsRow.cod_min_order_amount,
-        cod_max_order_amount: codSettingsRow.cod_max_order_amount,
-        cod_fee_amount: codSettingsRow.cod_fee_amount,
-        require_phone_for_cod: codSettingsRow.require_phone_for_cod,
-        require_full_address_for_cod: codSettingsRow.require_full_address_for_cod,
-        cod_requires_manual_confirmation: codSettingsRow.cod_requires_manual_confirmation,
-        cod_notes_for_ai: codSettingsRow.cod_notes_for_ai,
+      codSettings: codSettingsShaped ? {
+        enable_cod: codSettingsShaped.enable_cod,
+        cod_min_order_amount: codSettingsShaped.cod_min_order_amount,
+        cod_max_order_amount: codSettingsShaped.cod_max_order_amount,
+        cod_fee_amount: codSettingsShaped.cod_fee_amount,
+        require_phone_for_cod: codSettingsShaped.require_phone_for_cod,
+        require_full_address_for_cod: codSettingsShaped.require_full_address_for_cod,
+        cod_requires_manual_confirmation: codSettingsShaped.cod_requires_manual_confirmation,
+        cod_notes_for_ai: codSettingsShaped.cod_notes_for_ai,
       } : null,
       shipmentForOrder: shipmentContext,
       unifiedCustomerSummary,
+      conversationSummary: conversationSummaryText,
     },
   };
 }

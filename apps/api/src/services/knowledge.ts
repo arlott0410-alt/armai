@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CreateMerchantFaqBody, CreateMerchantPromotionBody, CreateMerchantKnowledgeEntryBody } from '@armai/shared';
+import * as contextCache from './ai-context-cache.js';
 
 export async function listFaqs(supabase: SupabaseClient, merchantId: string, activeOnly = true) {
   let q = supabase.from('merchant_faqs').select('*').eq('merchant_id', merchantId).order('sort_order');
@@ -23,6 +24,7 @@ export async function createFaq(supabase: SupabaseClient, merchantId: string, bo
     .select()
     .single();
   if (error) throw new Error(error.message);
+  contextCache.invalidateCatalogAndKnowledge(merchantId);
   return data;
 }
 
@@ -35,6 +37,7 @@ export async function updateFaq(supabase: SupabaseClient, merchantId: string, fa
     .select()
     .single();
   if (error) throw new Error(error.message);
+  contextCache.invalidateCatalogAndKnowledge(merchantId);
   return data;
 }
 
@@ -61,6 +64,7 @@ export async function createPromotion(supabase: SupabaseClient, merchantId: stri
     .select()
     .single();
   if (error) throw new Error(error.message);
+  contextCache.invalidateCatalogAndKnowledge(merchantId);
   return data;
 }
 
@@ -78,6 +82,7 @@ export async function updatePromotion(
     .select()
     .single();
   if (error) throw new Error(error.message);
+  contextCache.invalidateCatalogAndKnowledge(merchantId);
   return data;
 }
 
@@ -105,6 +110,7 @@ export async function createKnowledgeEntry(supabase: SupabaseClient, merchantId:
     .select()
     .single();
   if (error) throw new Error(error.message);
+  contextCache.invalidateCatalogAndKnowledge(merchantId);
   return data;
 }
 
@@ -117,5 +123,6 @@ export async function updateKnowledgeEntry(supabase: SupabaseClient, merchantId:
     .select()
     .single();
   if (error) throw new Error(error.message);
+  contextCache.invalidateCatalogAndKnowledge(merchantId);
   return data;
 }

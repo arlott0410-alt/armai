@@ -5,6 +5,12 @@ import { getSupabaseAdmin } from '../../lib/supabase.js';
 import * as merchantService from '../../services/merchant.js';
 import * as aiContext from '../../services/ai-context.js';
 import * as merchantDashboard from '../../services/merchant-dashboard.js';
+import * as conversationRouter from '../../services/conversation-router.js';
+import * as routerContextLoader from '../../services/router-context-loader.js';
+import * as responseModeResolver from '../../services/response-mode-resolver.js';
+import * as aiUsageLogging from '../../services/ai-usage-logging.js';
+import * as contextCache from '../../services/ai-context-cache.js';
+import * as routerMetrics from '../../services/router-metrics.js';
 import productsRoutes from './products.js';
 import categoriesRoutes from './categories.js';
 import knowledgeRoutes from './knowledge.js';
@@ -85,17 +91,108 @@ app.route('/promotions', promotionsRoutes);
 app.route('/payment-accounts', paymentAccountsRoutes);
 
 app.post('/ai/context', async (c) => {
-  const body = await c.req.json().catch(() => ({}));
+  const body = (await c.req.json().catch(() => ({}))) as {
+    conversationId?: string;
+    orderId?: string;
+    lastMessageText?: string;
+    channelType?: 'facebook' | 'whatsapp';
+    messageType?: string;
+  };
   const merchantId = c.get('merchantId');
   const supabase = getSupabaseAdmin(c.env);
+  const conversationId = body.conversationId ?? null;
+  const orderId = body.orderId ?? null;
+  const lastMessageText = body.lastMessageText;
+  const channelType = body.channelType ?? 'facebook';
+  const messageType = body.messageType ?? 'text';
+
   const { data: settings } = await supabase.from('merchant_settings').select('ai_system_prompt').eq('merchant_id', merchantId).single();
+  const merchantPrompt = settings?.ai_system_prompt ?? null;
+
+  if (lastMessageText != null && lastMessageText !== '') {
+    const routerCtx = await routerContextLoader.loadRouterEventContext(supabase, merchantId, conversationId, orderId);
+    const event: conversationRouter.NormalizedIncomingEvent = {
+      merchantId,
+      channelType,
+      conversationId,
+      customerId: null,
+      messageType,
+      text: lastMessageText,
+      mediaUrl: null,
+      activeOrderId: routerCtx.activeOrderId,
+      activeOrderPaymentStatus: routerCtx.activeOrderPaymentStatus,
+      activeOrderFulfillmentStatus: routerCtx.activeOrderFulfillmentStatus,
+      hasShipmentWithTracking: routerCtx.hasShipmentWithTracking,
+      codEnabled: routerCtx.codEnabled,
+    };
+    const route = conversationRouter.routeIncomingConversationEvent(event);
+    const faqs = (contextCache.get<Array<{ question: string; answer: string }>>(merchantId, 'faqs')) ?? [];
+    const faqAnswer = responseModeResolver.getFaqAnswerForQuery(lastMessageText, faqs);
+    const resolved = responseModeResolver.resolveLowCostResponse({
+      routeCategory: route.routeCategory,
+      responseMode: route.responseMode,
+      templateHint: route.templateHint,
+      builtContext: null,
+      trackingNumber: routerCtx.trackingNumber,
+      codEnabled: routerCtx.codEnabled,
+      faqAnswer,
+      greetingTemplate: null,
+    });
+    if (resolved.mode === 'template' && 'text' in resolved) {
+      await aiUsageLogging.logAiUsage(supabase, {
+        merchantId,
+        conversationId,
+        responseMode: 'template',
+        routeCategory: route.routeCategory,
+        aiCallReason: 'template',
+      });
+      return c.json({ responseMode: 'template' as const, text: resolved.text });
+    }
+    if (resolved.mode === 'escalation' && 'text' in resolved) {
+      await aiUsageLogging.logAiUsage(supabase, {
+        merchantId,
+        conversationId,
+        responseMode: 'escalation',
+        routeCategory: route.routeCategory,
+        aiCallReason: 'escalation',
+      });
+      return c.json({ responseMode: 'escalation' as const, text: resolved.text });
+    }
+    if (resolved.mode === 'retrieval' && resolved.text != null && !resolved.needAi) {
+      await aiUsageLogging.logAiUsage(supabase, {
+        merchantId,
+        conversationId,
+        responseMode: 'retrieval',
+        routeCategory: route.routeCategory,
+        aiCallReason: 'retrieval',
+      });
+      return c.json({ responseMode: 'retrieval' as const, text: resolved.text });
+    }
+    await aiUsageLogging.logAiUsage(supabase, {
+      merchantId,
+      conversationId,
+      responseMode: 'ai',
+      routeCategory: route.routeCategory,
+      aiCallReason: 'selling_conversation',
+    });
+  }
+
   const context = await aiContext.buildAiContext(supabase, {
     merchantId,
-    merchantPrompt: settings?.ai_system_prompt ?? null,
-    conversationId: (body as { conversationId?: string }).conversationId ?? null,
-    orderId: (body as { orderId?: string }).orderId ?? null,
+    merchantPrompt,
+    conversationId,
+    orderId,
   });
   return c.json(context);
+});
+
+app.get('/ai/metrics', async (c) => {
+  const merchantId = c.get('merchantId');
+  const supabase = getSupabaseAdmin(c.env);
+  const to = new Date();
+  const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
+  const metrics = await routerMetrics.getRouterMetrics(supabase, merchantId, from, to);
+  return c.json(metrics);
 });
 
 export default app;

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import * as contextCache from './ai-context-cache.js';
 
 export interface MerchantCodSettingsRow {
   merchant_id: string;
@@ -36,4 +37,5 @@ export async function upsertMerchantCodSettings(
   };
   const { error } = await supabase.from('merchant_cod_settings').upsert(payload, { onConflict: 'merchant_id' });
   if (error) throw new Error(error.message);
+  contextCache.invalidate(merchantId, 'cod_settings');
 }

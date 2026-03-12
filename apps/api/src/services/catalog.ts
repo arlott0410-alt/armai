@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CreateProductCategoryBody, CreateProductBody, CreateProductVariantBody, CreateProductKeywordBody } from '@armai/shared';
+import * as contextCache from './ai-context-cache.js';
 
 export async function listCategories(supabase: SupabaseClient, merchantId: string, activeOnly = true) {
   let q = supabase.from('product_categories').select('*').eq('merchant_id', merchantId).order('sort_order');
@@ -22,6 +23,7 @@ export async function createCategory(supabase: SupabaseClient, merchantId: strin
     .select()
     .single();
   if (error) throw new Error(error.message);
+  contextCache.invalidateCatalogAndKnowledge(merchantId);
   return data;
 }
 
@@ -37,6 +39,7 @@ export async function updateCategory(supabase: SupabaseClient, merchantId: strin
     .select()
     .single();
   if (error) throw new Error(error.message);
+  contextCache.invalidateCatalogAndKnowledge(merchantId);
   return data;
 }
 
@@ -81,6 +84,7 @@ export async function createProduct(supabase: SupabaseClient, merchantId: string
     .select()
     .single();
   if (error) throw new Error(error.message);
+  contextCache.invalidateCatalogAndKnowledge(merchantId);
   return data;
 }
 
@@ -93,6 +97,7 @@ export async function updateProduct(supabase: SupabaseClient, merchantId: string
     .select()
     .single();
   if (error) throw new Error(error.message);
+  contextCache.invalidateCatalogAndKnowledge(merchantId);
   return data;
 }
 
