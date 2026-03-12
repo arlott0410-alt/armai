@@ -11,6 +11,7 @@ import * as responseModeResolver from '../../services/response-mode-resolver.js'
 import * as aiUsageLogging from '../../services/ai-usage-logging.js'
 import * as contextCache from '../../services/ai-context-cache.js'
 import * as routerMetrics from '../../services/router-metrics.js'
+import * as subscription from '../../services/subscription.js'
 import productsRoutes from './products.js'
 import categoriesRoutes from './categories.js'
 import knowledgeRoutes from './knowledge.js'
@@ -52,6 +53,13 @@ app.get('/readiness', async (c) => {
   const merchantId = c.get('merchantId')
   const readiness = await merchantDashboard.getMerchantReadiness(supabase, merchantId)
   return c.json({ readiness })
+})
+
+app.get('/subscription', async (c) => {
+  const supabase = getSupabaseAdmin(c.env)
+  const merchantId = c.get('merchantId')
+  const sub = await subscription.getMerchantSubscription(supabase, merchantId)
+  return c.json({ subscription: sub })
 })
 
 app.get('/channels', async (c) => {

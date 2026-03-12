@@ -84,7 +84,19 @@ armai/
 - **apps/web**: Dashboard UI (React, React Router).
 - **apps/api**: Single Worker; routes for health, auth, super, merchant, orders, webhooks (Facebook, WhatsApp, Telegram, bank).
 - **packages/shared**: Used by both `api` and `web`; build with `npm run build -w packages/shared` (or via root `npm run build`).
-- **sql/**: Run migrations in numeric order in your Supabase project.
+- **sql/**: Run migrations in numeric order in your Supabase project (including `081_subscription_payments.sql` for subscriptions).
+
+---
+
+## Enterprise SaaS & Subscriptions (Laos)
+
+The app is set up for **Laos-focused enterprise SaaS** ($50–300 USD/month):
+
+- **UI/UX:** Neutral palette (primary #0070f3, accent #4caf50), responsive sidebar + top navbar, dark mode, Lao as default language (with English/Thai toggle), Phetsarath OT + Noto Sans Lao fonts.
+- **Plans:** Basic ($50/month, core AI, limited users) and Pro ($300/month, advanced AI, unlimited users, analytics, priority support). Public `/api/plans` returns plans with USD and Kip equivalent.
+- **Workflow:** Sign in → Pricing (`/pricing`) → Choose plan → Checkout (BCEL OnePay for Laos or Stripe) → Success/error pages. Subscription status and next billing are shown in Settings and dashboard.
+- **Payment:** BCEL OnePay (primary for Laos: QR, Visa/MasterCard, UnionPay, Alipay/WeChat) and Stripe as fallback. Webhooks: `POST /api/webhooks/payment/stripe`, `POST /api/webhooks/payment/bcel`.
+- **Localization:** All menus, buttons, and labels use `next-intl`-style keys; locale files in `apps/web/src/i18n/locales.ts` (lo, th, en). Default locale: Lao.
 
 ---
 
@@ -116,7 +128,7 @@ FACEBOOK_VERIFY_TOKEN=optional_webhook_token
 ENVIRONMENT=development
 ```
 
-R2 buckets (`SLIP_BUCKET`, optional `CHANNEL_MEDIA_BUCKET`) are bound in `apps/api/wrangler.toml`; for local dev you can use miniflare’s built-in buckets.
+R2 buckets (`SLIP_BUCKET`, optional `CHANNEL_MEDIA_BUCKET`) are bound in `apps/api/wrangler.toml`; for local dev you can use miniflare’s built-in buckets. For subscriptions, set `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` or `BCEL_ONEPAY_*` and run `sql/081_subscription_payments.sql`.
 
 **Web (Vite)** — create `apps/web/.env.local`:
 

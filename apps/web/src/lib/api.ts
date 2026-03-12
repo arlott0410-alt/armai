@@ -44,6 +44,57 @@ export const authApi = {
   me: (token: string) => request<MeResponse>('/auth/me', { token }),
 }
 
+export interface PlanPublic {
+  code: 'basic' | 'pro'
+  nameKey: string
+  monthlyPriceUsd: number
+  monthlyPriceKip: number
+  features: string[]
+  maxUsers: number | null
+  supportLevel: string
+}
+
+export const plansApi = {
+  list: () => request<{ plans: PlanPublic[] }>('/plans'),
+}
+
+export interface CreateCheckoutBody {
+  plan_code: 'basic' | 'pro'
+  success_url: string
+  cancel_url: string
+  customer_email?: string | null
+  customer_phone?: string | null
+  billing_address?: {
+    name?: string
+    address_line1?: string
+    city?: string
+    country?: string
+    postal_code?: string
+  } | null
+}
+
+export const subscribeApi = {
+  createCheckout: (token: string, body: CreateCheckoutBody) =>
+    request<{ checkout_url: string | null; payment_id: string | null }>('/subscribe', {
+      method: 'POST',
+      token,
+      body,
+    }),
+}
+
+export interface MerchantSubscription {
+  plan: PlanPublic | null
+  planCode: string
+  billingStatus: string
+  currentPeriodEnd: string | null
+  nextBillingAt: string | null
+}
+
+export const subscriptionApi = {
+  get: (token: string) =>
+    request<{ subscription: MerchantSubscription | null }>('/merchant/subscription', { token }),
+}
+
 export interface SuperDashboardKPIs {
   mrrThisMonth: number
   activeMerchants: number

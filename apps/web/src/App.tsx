@@ -2,6 +2,9 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 
 import Login from './pages/Login'
+import Pricing from './pages/Pricing'
+import CheckoutSuccess from './pages/CheckoutSuccess'
+import CheckoutError from './pages/CheckoutError'
 import SuperLayout from './layouts/SuperLayout'
 import MerchantLayout from './layouts/MerchantLayout'
 import SuperDashboard from './pages/super/SuperDashboard'
@@ -86,6 +89,9 @@ export default function App() {
         <Route path="customers/:id" element={<MerchantCustomerDetail />} />
         <Route path="settings" element={<MerchantSettings />} />
       </Route>
+      <Route path="/pricing" element={<Pricing />} />
+      <Route path="/checkout/success" element={<CheckoutSuccess />} />
+      <Route path="/checkout/error" element={<CheckoutError />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

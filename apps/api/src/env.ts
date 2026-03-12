@@ -19,4 +19,13 @@ export interface Env {
   SLIP_BUCKET: R2Bucket
   /** Channel media (WhatsApp/Facebook images, documents). Optional; if missing, media_url may be external. */
   CHANNEL_MEDIA_BUCKET?: R2Bucket
+  /** Stripe secret key for subscription payments (global cards). Optional; use BCEL OnePay for Laos. */
+  STRIPE_SECRET_KEY?: string
+  /** Stripe webhook signing secret for /api/webhooks/payment. */
+  STRIPE_WEBHOOK_SECRET?: string
+  /** BCEL OnePay API base URL (Laos). */
+  BCEL_ONEPAY_API_URL?: string
+  /** BCEL OnePay merchant/API credentials. */
+  BCEL_ONEPAY_MERCHANT_ID?: string
+  BCEL_ONEPAY_SECRET_KEY?: string
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useI18n } from '../i18n/I18nProvider'
 import { theme } from '../theme'
 
 export default function Login() {
@@ -9,6 +10,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const { signIn, user } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -72,7 +74,7 @@ export default function Login() {
           </span>
         </div>
         <p style={{ color: theme.textSecondary, marginBottom: 28, fontSize: 14 }}>
-          Sign in to continue.
+          {t('login.continue')}
         </p>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 16 }}>
@@ -84,15 +86,19 @@ export default function Login() {
                 color: theme.textSecondary,
                 fontSize: 13,
               }}
+              htmlFor="login-email"
             >
               Email
             </label>
             <input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
               style={{ width: '100%', padding: 12 }}
+              aria-describedby={error ? 'login-error' : undefined}
             />
           </div>
           <div style={{ marginBottom: 24 }}>
@@ -104,18 +110,29 @@ export default function Login() {
                 color: theme.textSecondary,
                 fontSize: 13,
               }}
+              htmlFor="login-password"
             >
               Password
             </label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete="current-password"
               style={{ width: '100%', padding: 12 }}
             />
           </div>
-          {error && <p style={{ color: theme.danger, marginBottom: 16, fontSize: 13 }}>{error}</p>}
+          {error && (
+            <p
+              id="login-error"
+              role="alert"
+              style={{ color: theme.danger, marginBottom: 16, fontSize: 13 }}
+            >
+              {error}
+            </p>
+          )}
           <button
             type="submit"
             disabled={loading}
@@ -129,8 +146,9 @@ export default function Login() {
               fontWeight: 600,
               fontSize: 14,
             }}
+            aria-busy={loading}
           >
-            {loading ? 'Signing in...' : 'Sign in'}
+            {loading ? t('login.signingIn') : t('login.signIn')}
           </button>
         </form>
       </div>

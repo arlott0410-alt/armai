@@ -1,12 +1,43 @@
-/* ArmAI premium theme: Black + Gold */
+/* ArmAI Enterprise: Laos SaaS — Phetsarath OT + Noto Sans Lao, neutral palette, dark/light */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;700&display=swap');
+
+/* Phetsarath OT: add font files to public/fonts/ (e.g. from dgc.gov.la or Google Fonts repo) */
+@font-face {
+  font-family: 'Phetsarath OT';
+  src: local('Phetsarath OT'), local('PhetsarathOT');
+  font-weight: 400 700;
+  font-display: swap;
+}
+
 :root {
-  --armai-bg: #0b0b0b;
-  --armai-surface: #121212;
-  --armai-primary: #d4af37;
-  --armai-highlight: #f5d67a;
-  --armai-text: #fafafa;
+  --armai-primary: #0070f3;
+  --armai-primary-hover: #0060df;
+  --armai-secondary: #f0f0f0;
+  --armai-accent: #4caf50;
+  --armai-bg: #ffffff;
+  --armai-surface: #fafafa;
+  --armai-surface-elevated: #f5f5f5;
+  --armai-border: rgba(0, 0, 0, 0.08);
+  --armai-border-muted: rgba(0, 0, 0, 0.06);
+  --armai-text: #111111;
+  --armai-text-secondary: #444444;
   --armai-text-muted: #71717a;
 }
+
+.dark {
+  --armai-bg: #0b0b0b;
+  --armai-surface: #121212;
+  --armai-surface-elevated: #1a1a1a;
+  --armai-border: rgba(255, 255, 255, 0.12);
+  --armai-border-muted: rgba(255, 255, 255, 0.08);
+  --armai-text: #fafafa;
+  --armai-text-secondary: #a1a1aa;
+  --armai-text-muted: #71717a;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 * {
   box-sizing: border-box;
@@ -15,15 +46,16 @@
 body {
   margin: 0;
   font-family:
+    'Phetsarath OT',
+    'Noto Sans Lao',
     system-ui,
     -apple-system,
-    'Segoe UI',
-    Roboto,
     sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--armai-text);
   background: var(--armai-bg);
+  -webkit-font-smoothing: antialiased;
 }
 
 #root {
@@ -31,7 +63,7 @@ body {
 }
 
 a {
-  color: var(--armai-highlight);
+  color: var(--armai-primary);
   text-decoration: none;
 }
 
@@ -48,14 +80,8 @@ input,
 textarea,
 select {
   font: inherit;
-}
-
-/* Form controls on dark surfaces */
-input,
-textarea,
-select {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--armai-surface-elevated);
+  border: 1px solid var(--armai-border);
   color: var(--armai-text);
   border-radius: 6px;
 }
@@ -70,5 +96,26 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--armai-primary);
-  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+  box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.2);
+}
+
+/* Accessibility: focus visible ring */
+:focus-visible {
+  outline: 2px solid var(--armai-primary);
+  outline-offset: 2px;
+}
+
+/* Skip link for keyboard nav */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--armai-primary);
+  color: white;
+  padding: 8px 16px;
+  z-index: 100;
+  border-radius: 0 0 4px 0;
+}
+.skip-link:focus {
+  top: 0;
 }

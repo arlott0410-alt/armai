@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { settingsApi, paymentMethodSettingsApi, type MerchantCodSettings } from '../../lib/api'
+import { useI18n } from '../../i18n/I18nProvider'
+import {
+  settingsApi,
+  paymentMethodSettingsApi,
+  subscriptionApi,
+  type MerchantCodSettings,
+} from '../../lib/api'
 import { PageShell, PanelCard } from '../../components/ui'
 import { theme } from '../../theme'
 
@@ -32,8 +39,14 @@ const hintStyle: React.CSSProperties = {
 
 export default function MerchantSettings() {
   const { user } = useAuth()
+  const { t } = useI18n()
   const token = user?.accessToken ?? null
 
+  const [sub, setSub] = useState<{
+    planCode: string
+    billingStatus: string
+    nextBillingAt: string | null
+  } | null>(null)
   const [aiPrompt, setAiPrompt] = useState('')
   const [bankParserId, setBankParserId] = useState('')
   const [webhookToken, setWebhookToken] = useState('')
@@ -54,6 +67,21 @@ export default function MerchantSettings() {
   const [codSaving, setCodSaving] = useState(false)
   const [codSaveError, setCodSaveError] = useState<string | null>(null)
   const [codSaved, setCodSaved] = useState(false)
+
+  useEffect(() => {
+    if (!token) return
+    subscriptionApi
+      .get(token)
+      .then((r) => {
+        if (r.subscription)
+          setSub({
+            planCode: r.subscription.planCode,
+            billingStatus: r.subscription.billingStatus,
+            nextBillingAt: r.subscription.nextBillingAt,
+          })
+      })
+      .catch(() => {})
+  }, [token])
 
   useEffect(() => {
     if (!token) return
@@ -101,10 +129,22 @@ export default function MerchantSettings() {
   }
 
   if (error) return <p style={{ color: theme.danger }}>{error}</p>
-  if (loading) return <p style={{ color: theme.textSecondary }}>Loading…</p>
+  if (loading) return <p style={{ color: theme.textSecondary }}>{t('common.loading')}</p>
 
   return (
-    <PageShell title="Settings" description="AI, bank parser, and webhook configuration">
+    <PageShell title={t('nav.settings')} description="AI, bank parser, and webhook configuration">
+      {sub && (
+        <PanelCard title={t('account.subscription')} subtitle={t('account.billingInfo')}>
+          <p style={{ marginBottom: 8, fontSize: 14, color: theme.textSecondary }}>
+            {t('pricing.currentPlan')}: {sub.planCode === 'pro' ? t('plan.pro') : t('plan.basic')} •{' '}
+            {t('pricing.expiresAt')}:{' '}
+            {sub.nextBillingAt ? new Date(sub.nextBillingAt).toLocaleDateString() : '—'}
+          </p>
+          <Link to="/pricing" style={{ color: theme.primary, fontSize: 14 }}>
+            {t('nav.plans')}
+          </Link>
+        </PanelCard>
+      )}
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
         <PanelCard
           title="AI configuration"

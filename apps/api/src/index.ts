@@ -9,11 +9,14 @@ function correlationId(): string {
 
 import health from './routes/health.js'
 import auth from './routes/auth.js'
+import plans from './routes/plans.js'
+import subscribe from './routes/subscribe.js'
 import superRoutes from './routes/super/index.js'
 import merchantRoutes from './routes/merchant/index.js'
 import settings from './routes/settings.js'
 import orders from './routes/orders.js'
 import support from './routes/support.js'
+import paymentWebhook from './routes/webhooks/payment.js'
 import facebookWebhook from './routes/webhooks/facebook.js'
 import bankWebhook from './routes/webhooks/bank.js'
 import telegramWebhook from './routes/webhooks/telegram.js'
@@ -38,11 +41,14 @@ app.use(
 
 app.route('/api/health', health)
 app.route('/api/auth', auth)
+app.route('/api/plans', plans)
+app.route('/api/subscribe', subscribe)
 app.route('/api/super', superRoutes)
 app.route('/api/merchant', merchantRoutes)
 app.route('/api/settings', settings)
 app.route('/api/orders', orders)
 app.route('/api/support', support)
+app.route('/api/webhooks/payment', paymentWebhook)
 app.route('/api/webhooks/facebook', facebookWebhook)
 app.route('/api/webhooks/bank', bankWebhook)
 app.route('/api/webhooks/telegram', telegramWebhook)

@@ -15,7 +15,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocale] = useState<Locale>(() => {
     const saved = localStorage.getItem('armai.locale')
     if (saved === 'lo' || saved === 'th' || saved === 'en') return saved
-    return 'en'
+    return 'lo'
   })
 
   const value = useMemo<I18nContextValue>(() => {
