@@ -159,6 +159,34 @@ export interface SystemSettingsResponse {
   } | null
 }
 
+/** Subscription bank details (GET /api/public/subscription-bank). Read directly from DB so merchants see latest. */
+export interface SubscriptionBankDetails {
+  bank_name: string
+  account_number: string
+  account_holder: string
+  qr_image_url: string | null
+}
+
+/** Fetch subscription bank from public endpoint (cache-bust). Use this on Pricing so merchants see data after super admin saves. */
+export async function fetchSubscriptionBank(
+  cacheBust = true
+): Promise<SubscriptionBankDetails | null> {
+  const base = getBaseUrl()
+  const url = `${base}/public/subscription-bank${cacheBust ? `?t=${Date.now()}` : ''}`
+  const res = await fetch(url)
+  const data = await res.json().catch(() => null)
+  if (!res.ok) return null
+  if (data && typeof data === 'object' && 'bank_name' in data) {
+    return {
+      bank_name: data.bank_name ?? '',
+      account_number: data.account_number ?? '',
+      account_holder: data.account_holder ?? '',
+      qr_image_url: data.qr_image_url ?? null,
+    }
+  }
+  return null
+}
+
 export const systemSettingsApi = {
   /** Pass cacheBust: true when opening bank modal or on window focus so merchants see latest after super admin saves. */
   get: (cacheBust?: boolean) =>

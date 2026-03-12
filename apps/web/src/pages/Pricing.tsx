@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -7,12 +7,13 @@ import {
   plansApi,
   subscribeApi,
   subscriptionApi,
-  systemSettingsApi,
   subscriptionPaymentsApi,
   getSlipUrl,
+  fetchSubscriptionBank,
   type PlanPublic,
   type SubscribeType,
 } from '../lib/api'
+import { getSupabase } from '../lib/supabase'
 import { useNow, getTrialDaysLeft } from '../hooks/useNow'
 
 const LAK_FORMAT = new Intl.NumberFormat('lo-LA', { maximumFractionDigits: 0 })
@@ -54,6 +55,7 @@ export default function Pricing() {
   const [paymentId, setPaymentId] = useState<string | null>(null)
   const [bank, setBank] = useState<BankSettings>(null)
   const [bankLoaded, setBankLoaded] = useState(false)
+  const [bankError, setBankError] = useState<string | null>(null)
   const [submitLoading, setSubmitLoading] = useState(false)
   const [slipUploaded, setSlipUploaded] = useState(false)
   const [slipUploading, setSlipUploading] = useState(false)
@@ -61,30 +63,60 @@ export default function Pricing() {
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
   const now = useNow()
 
-  useEffect(() => {
-    systemSettingsApi
-      .get()
-      .then((r) => {
-        setBank(r.bank)
+  /** Load subscription bank: try public API first (reads from DB), then Supabase direct so merchants always see latest. */
+  const loadBankDetails = useCallback(async (cacheBust = true) => {
+    setBankError(null)
+    try {
+      const fromApi = await fetchSubscriptionBank(cacheBust)
+      if (fromApi && (fromApi.bank_name || fromApi.account_number)) {
+        setBank(fromApi)
         setBankLoaded(true)
-      })
-      .catch(() => {
+        return
+      }
+    } catch {
+      // fallback to Supabase
+    }
+    const supabase = getSupabase()
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('system_settings')
+          .select('value')
+          .eq('key', 'subscription_bank')
+          .maybeSingle()
+        if (error) {
+          setBankError(error.message)
+          setBank(null)
+        } else if (data?.value && typeof data.value === 'object' && 'bank_name' in data.value) {
+          const v = data.value as Record<string, unknown>
+          setBank({
+            bank_name: (v.bank_name as string) ?? '',
+            account_number: (v.account_number as string) ?? '',
+            account_holder: (v.account_holder as string) ?? '',
+            qr_image_url: (v.qr_image_url as string | null) ?? null,
+          })
+        } else {
+          setBank(null)
+        }
+      } catch {
         setBank(null)
-        setBankLoaded(true)
-      })
+      }
+    } else {
+      setBank(null)
+    }
+    setBankLoaded(true)
   }, [])
+
+  useEffect(() => {
+    loadBankDetails(false)
+  }, [loadBankDetails])
 
   // Revalidate bank details when user returns to tab so they see updates after super admin saves
   useEffect(() => {
-    const onFocus = () => {
-      systemSettingsApi
-        .get(true)
-        .then((r) => setBank(r.bank))
-        .catch(() => setBank(null))
-    }
+    const onFocus = () => loadBankDetails(true)
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
-  }, [])
+  }, [loadBankDetails])
 
   useEffect(() => {
     plansApi
@@ -137,11 +169,8 @@ export default function Pricing() {
     setError(null)
     setPendingMessage(null)
     setSlipUploaded(false)
-    // Refetch bank details with cache-bust when opening modal so we show latest after super admin saves
-    systemSettingsApi
-      .get(true)
-      .then((r) => setBank(r.bank))
-      .catch(() => setBank(null))
+    // Refetch bank details when opening modal so merchants see latest after super admin saves
+    loadBankDetails(true)
     setPaymentId(null)
     if (type === 'trial') {
       setModalType(type)
@@ -414,6 +443,11 @@ export default function Pricing() {
                       : '₭1,999,000 / ເດືອນ — ໂອນເຂົ້າບັນຊີຕາມລາຍລະອຽດດ້ານລຸ່ມ.'}{' '}
                     ຫຼັງໂອນແລ້ວ ອັບໂຫຼດສະລິບດ້ານລຸ່ມ (ບັງຄັບ).
                   </p>
+                  {bankError && (
+                    <p className="text-sm text-red-500 dark:text-red-400 mb-3" role="alert">
+                      {bankError}
+                    </p>
+                  )}
                   {!bank ? (
                     <p className="text-sm text-[var(--armai-text-muted)] mb-3">
                       {bankLoaded
@@ -426,7 +460,7 @@ export default function Pricing() {
                         <span className="text-[var(--armai-text-muted)]">
                           {t('pricing.bankName')}:{' '}
                         </span>
-                        {bank.bank_name}
+                        {bank.bank_name || t('common.loading')}
                       </div>
                       <div>
                         <span className="text-[var(--armai-text-muted)]">
@@ -443,14 +477,18 @@ export default function Pricing() {
                       <p className="text-xs text-[var(--armai-text-muted)] mt-1">
                         ຫມາຍເຫດ: ຊື່ຮ້ານ / ເບີຕິດຕໍ່
                       </p>
-                      {bank.qr_image_url && (
+                      {bank.qr_image_url ? (
                         <div className="mt-2">
                           <img
                             src={getSlipUrl(bank.qr_image_url)}
-                            alt="QR Code"
-                            className="w-48 h-48 object-contain border border-[var(--armai-border)] rounded"
+                            alt="QR Code for Payment"
+                            className="w-48 h-48 object-contain border border-[var(--armai-border)] rounded mx-auto mt-4"
                           />
                         </div>
+                      ) : (
+                        <p className="text-xs text-[var(--armai-text-muted)] mt-2">
+                          {t('pricing.qrImageSoon')}
+                        </p>
                       )}
                     </div>
                   )}

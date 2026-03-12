@@ -93,6 +93,7 @@ export const I18N_KEYS = [
   'pricing.trialDaysLeft',
   'pricing.perYear',
   'pricing.uploadSlipRequired',
+  'pricing.qrImageSoon',
   'pricing.backButton',
   'pricing.specialDiscountYearly',
   'pricing.perMonthEquivalent',

@@ -29,6 +29,7 @@ import bankWebhook from './routes/webhooks/bank.js'
 import telegramWebhook from './routes/webhooks/telegram.js'
 import whatsappWebhook from './routes/webhooks/whatsapp.js'
 import systemRoutes from './routes/system/index.js'
+import publicRoutes from './routes/public/index.js'
 
 const app = new Hono<{ Bindings: Env; Variables: { correlationId: string } }>()
 
@@ -56,6 +57,7 @@ app.route('/api/super', superRoutes)
 app.route('/api/merchant', merchantRoutes)
 app.route('/api/channels', channelsRoutes)
 app.route('/api/system', systemRoutes)
+app.route('/api/public', publicRoutes)
 app.route('/api/settings', settings)
 /** Serve R2 slip images (e.g. subscription transfer slips). Key = path after /api/slip/ */
 app.get('/api/slip/*', async (c) => {
