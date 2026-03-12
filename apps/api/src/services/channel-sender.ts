@@ -57,16 +57,17 @@ async function getConversationChannelInfo(
 
 /**
  * Resolve WhatsApp access token for this connection.
- * Uses env.WHATSAPP_ACCESS_TOKEN when set (single app); for multi-tenant, access_token_reference could map to KV.
+ * Prefer connection.access_token (OAuth), then env.WHATSAPP_ACCESS_TOKEN, then access_token_reference.
  */
 async function getWhatsAppAccessToken(
   env: Env,
   _merchantId: string,
   _phoneNumberId: string,
-  accessTokenReference: string | null
+  connectionTokenOrRef: string | null
 ): Promise<string | null> {
+  if (connectionTokenOrRef) return connectionTokenOrRef
   if (env.WHATSAPP_ACCESS_TOKEN) return env.WHATSAPP_ACCESS_TOKEN
-  return accessTokenReference ?? null
+  return null
 }
 
 /** Check if conversation has an inbound WhatsApp message within last 24h (session window). */
@@ -143,7 +144,7 @@ export async function sendChannelMessage(
     }
     const { data: waConn } = await supabase
       .from('whatsapp_connections')
-      .select('id, phone_number_id, access_token_reference')
+      .select('id, phone_number_id, access_token, access_token_reference')
       .eq('merchant_id', info.merchantId)
       .eq('phone_number_id', info.externalAccountId)
       .eq('is_active', true)
@@ -155,7 +156,7 @@ export async function sendChannelMessage(
       env,
       info.merchantId,
       waConn.phone_number_id,
-      waConn.access_token_reference
+      (waConn as { access_token?: string | null }).access_token ?? waConn.access_token_reference
     )
     if (!token) {
       return { sent: false, channelType: 'whatsapp', error: 'WhatsApp access token not configured' }

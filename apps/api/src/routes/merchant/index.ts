@@ -73,7 +73,7 @@ app.get('/channels', async (c) => {
       .order('created_at', { ascending: false }),
     supabase
       .from('whatsapp_connections')
-      .select('id, phone_number_id, business_account_name, is_active')
+      .select('id, phone_number_id, business_account_name, display_phone_number, is_active')
       .eq('merchant_id', merchantId)
       .order('created_at', { ascending: false }),
   ])
@@ -86,6 +86,8 @@ app.get('/channels', async (c) => {
     id: row.id,
     phone_number_id: row.phone_number_id,
     business_account_name: row.business_account_name ?? null,
+    display_phone_number:
+      (row as { display_phone_number?: string | null }).display_phone_number ?? null,
     is_active: row.is_active,
   }))
   return c.json({

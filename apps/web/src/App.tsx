@@ -36,6 +36,7 @@ const MerchantOrderDetail = lazy(() => import('./pages/merchant/MerchantOrderDet
 const ProductsAndCategoriesPage = lazy(() => import('./pages/merchant/ProductsAndCategoriesPage'))
 const PaymentConfigPage = lazy(() => import('./pages/merchant/PaymentConfigPage'))
 const ChannelsPage = lazy(() => import('./pages/merchant/ChannelsPage'))
+const WhatsAppCallbackPage = lazy(() => import('./pages/merchant/WhatsAppCallbackPage'))
 const AiConfigPage = lazy(() => import('./pages/merchant/AiConfigPage'))
 const GeneralSettingsPage = lazy(() => import('./pages/merchant/GeneralSettingsPage'))
 const MerchantCustomers = lazy(() => import('./pages/merchant/MerchantCustomers'))
@@ -128,6 +129,7 @@ export default function App() {
           <Route path="products" element={<ProductsAndCategoriesPage />} />
           <Route path="payment-config" element={<PaymentConfigPage />} />
           <Route path="channels" element={<ChannelsPage />} />
+          <Route path="channels/whatsapp/callback" element={<WhatsAppCallbackPage />} />
           <Route path="ai-config" element={<AiConfigPage />} />
           <Route path="general-settings" element={<GeneralSettingsPage />} />
           <Route path="customers" element={<MerchantCustomers />} />

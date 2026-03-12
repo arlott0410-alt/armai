@@ -96,3 +96,10 @@ export const whatsappConnectionUpsertSchema = z.object({
   is_active: z.boolean().optional(),
 })
 export type WhatsAppConnectionUpsert = z.infer<typeof whatsappConnectionUpsertSchema>
+
+/** WhatsApp OAuth callback: frontend sends code and redirect_uri after Meta redirect. */
+export const whatsappConnectBodySchema = z.object({
+  code: z.string().min(1),
+  redirect_uri: z.string().url(),
+})
+export type WhatsAppConnectBody = z.infer<typeof whatsappConnectBodySchema>

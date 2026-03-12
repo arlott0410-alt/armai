@@ -73,7 +73,14 @@ function normalizeWaMessage(msg: WhatsAppMessage): {
   return { messageType, text, mediaId }
 }
 
-/** Ingest one WhatsApp message: channel_messages + conversation + message_buffers. */
+/** Result of one ingested message (for auto-reply). */
+export interface IngestedMessageForReply {
+  conversationId: string
+  senderId: string
+  text: string
+}
+
+/** Ingest one WhatsApp message: channel_messages + conversation + message_buffers. Returns items with text for auto-reply. */
 export async function ingestWhatsAppMessage(
   supabase: SupabaseClient,
   p: {
@@ -82,13 +89,14 @@ export async function ingestWhatsAppMessage(
     value: WhatsAppChangeValue
     getMediaUrl?: (mediaId: string) => Promise<string | null>
   }
-): Promise<void> {
+): Promise<IngestedMessageForReply[]> {
   const messages = p.value.messages ?? []
   const contacts = p.value.contacts ?? []
   const contactByFrom = new Map<string, { name?: string }>()
   for (const c of contacts) {
     if (c.wa_id) contactByFrom.set(c.wa_id, { name: c.profile?.name })
   }
+  const forReply: IngestedMessageForReply[] = []
 
   for (const msg of messages) {
     const from = msg.from
@@ -161,5 +169,9 @@ export async function ingestWhatsAppMessage(
       rawText: text,
       rawAttachments: mediaUrl ? [{ type: messageType, url: mediaUrl }] : null,
     })
+    if (text?.trim()) {
+      forReply.push({ conversationId, senderId: from, text: text.trim() })
+    }
   }
+  return forReply
 }

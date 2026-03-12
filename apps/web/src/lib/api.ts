@@ -1038,6 +1038,7 @@ export interface ChannelsSummaryResponse {
       id: string
       phone_number_id: string
       business_account_name: string | null
+      display_phone_number: string | null
       is_active: boolean
     }[]
   }
@@ -1117,6 +1118,20 @@ export const whatsappApi = {
   test: (token: string) =>
     request<{ ok: boolean; message?: string }>('/merchant/whatsapp/test', {
       method: 'POST',
+      token,
+    }),
+}
+
+/** WhatsApp OAuth connect (exchange code for token, store connection). */
+export const whatsappChannelApi = {
+  connect: (token: string, body: { code: string; redirect_uri: string }) =>
+    request<{ ok: boolean; phone_number_id: string; display_phone_number: string | null }>(
+      '/channels/whatsapp/connect',
+      { method: 'POST', token, body }
+    ),
+  disconnect: (token: string, connectionId: string) =>
+    request<{ ok: boolean }>(`/channels/whatsapp/disconnect/${connectionId}`, {
+      method: 'DELETE',
       token,
     }),
 }

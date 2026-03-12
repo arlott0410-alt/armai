@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useI18n } from '../../i18n/I18nProvider'
 import { PageShell } from '../../components/ui'
 import { Tabs, TabPanel } from '../../components/ui/Tabs'
-import MerchantChannels from './MerchantChannels'
 import MerchantTelegram from './MerchantTelegram'
 import MerchantFacebook from './MerchantFacebook'
+import MerchantWhatsApp from './MerchantWhatsApp'
 
 type TabValue = 'facebook' | 'whatsapp' | 'telegram'
 
@@ -41,7 +41,7 @@ export default function ChannelsPage() {
         )}
         {tab === 'whatsapp' && (
           <div className="mt-4">
-            <MerchantChannels />
+            <MerchantWhatsApp />
           </div>
         )}
         {tab === 'telegram' && (

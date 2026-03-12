@@ -18,6 +18,12 @@ export interface Env {
   WHATSAPP_ACCESS_TOKEN?: string
   /** Optional: verify WhatsApp webhook signature (same as Facebook if same Meta app). */
   WHATSAPP_APP_SECRET?: string
+  /** Meta App ID for WhatsApp OAuth (can be same as FACEBOOK_APP_ID if same app). */
+  META_APP_ID?: string
+  /** Meta App secret for WhatsApp OAuth token exchange. */
+  META_APP_SECRET?: string
+  /** Base URL of the Worker (e.g. https://api.armai.com) for OAuth redirect_uri. */
+  WORKER_URL?: string
   SLIP_BUCKET: R2Bucket
   /** KV for system_settings cache (e.g. subscription_bank). Reduces Supabase reads. */
   SETTINGS_KV?: KVNamespace

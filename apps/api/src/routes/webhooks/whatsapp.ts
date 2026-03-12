@@ -11,6 +11,8 @@ import {
   resolveWhatsAppPhoneToMerchant,
   getOrCreateChannelConnectionWhatsApp,
 } from '../../services/channel.js'
+import { getReplyForIncomingWhatsApp } from '../../services/whatsapp-auto-reply.js'
+import * as channelSender from '../../services/channel-sender.js'
 
 async function hmacSha256(secret: string, body: string): Promise<string> {
   const key = await crypto.subtle.importKey(
@@ -94,12 +96,32 @@ app.post('/', async (c) => {
 
     await getOrCreateChannelConnectionWhatsApp(supabase, merchantId, phoneNumberId)
 
-    await ingestWhatsAppMessage(supabase, {
+    const forReply = await ingestWhatsAppMessage(supabase, {
       merchantId,
       phoneNumberId,
       value,
       getMediaUrl: undefined,
     })
+
+    for (const { conversationId, senderId, text } of forReply) {
+      try {
+        const replyText = await getReplyForIncomingWhatsApp(c.env, {
+          merchantId,
+          conversationId,
+          customerMessage: text,
+        })
+        if (replyText) {
+          await channelSender.sendChannelMessage({
+            supabase,
+            env: c.env,
+            conversationId,
+            payload: { text: replyText, message_type: 'text' },
+          })
+        }
+      } catch {
+        // Log but do not fail webhook
+      }
+    }
   }
 
   return c.json({ ok: true })
