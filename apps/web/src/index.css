@@ -1,5 +1,5 @@
-/* ArmAI Enterprise: Laos SaaS — Phetsarath OT + Noto Sans Lao, neutral palette, dark/light */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;700&display=swap');
+/* ArmAI Enterprise: Laos SaaS — Phetsarath OT, Noto Sans Lao, Noto Sans Thai */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+Thai:wght@400;700&display=swap');
 
 /* Phetsarath OT: add font files to public/fonts/ (e.g. from dgc.gov.la or Google Fonts repo) */
 @font-face {
@@ -14,6 +14,8 @@
   --armai-primary-hover: #0060df;
   --armai-secondary: #f0f0f0;
   --armai-accent: #4caf50;
+  --armai-gradient-start: #6366f1;
+  --armai-gradient-end: #0070f3;
   --armai-bg: #ffffff;
   --armai-surface: #fafafa;
   --armai-surface-elevated: #f5f5f5;
@@ -22,6 +24,7 @@
   --armai-text: #111111;
   --armai-text-secondary: #444444;
   --armai-text-muted: #71717a;
+  --armai-warning: #eab308;
 }
 
 .dark {
@@ -33,6 +36,23 @@
   --armai-text: #fafafa;
   --armai-text-secondary: #a1a1aa;
   --armai-text-muted: #71717a;
+}
+
+/* Glassmorphism cards */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.dark .glass-card {
+  background: rgba(26, 26, 26, 0.7);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Gradient accent */
+.gradient-accent {
+  background: linear-gradient(135deg, var(--armai-gradient-start), var(--armai-gradient-end));
 }
 
 @tailwind base;
@@ -48,6 +68,7 @@ body {
   font-family:
     'Phetsarath OT',
     'Noto Sans Lao',
+    'Noto Sans Thai',
     system-ui,
     -apple-system,
     sans-serif;

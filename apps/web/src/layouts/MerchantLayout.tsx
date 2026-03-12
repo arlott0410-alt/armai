@@ -1,11 +1,31 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  Package,
+  FolderTree,
+  BookOpen,
+  Tag,
+  CreditCard,
+  RefreshCw,
+  Activity,
+  Send,
+  MessageCircle,
+  Users,
+  Settings,
+  CreditCard as PlanIcon,
+  ChevronLeft,
+  ChevronRight,
+  Sun,
+  Moon,
+  Bell,
+} from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useI18n } from '../i18n/I18nProvider'
 import { deriveLocaleFromMerchant } from '../i18n/locales'
 import { merchantApi } from '../lib/api'
-import { useEffect } from 'react'
+import { LanguageSwitcher } from '../components/LanguageSwitcher'
 
 export default function MerchantLayout() {
   const { user, signOut } = useAuth()
@@ -71,53 +91,97 @@ export default function MerchantLayout() {
             className="p-2 rounded-lg text-[var(--armai-text-muted)] hover:bg-[var(--armai-surface-elevated)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)]"
             aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {sidebarCollapsed ? '→' : '←'}
+            {sidebarCollapsed ? (
+              <ChevronRight className="h-5 w-5" />
+            ) : (
+              <ChevronLeft className="h-5 w-5" />
+            )}
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto p-2 space-y-1" role="menubar">
           <NavLink to="/merchant/dashboard" className={navLinkClass} role="menuitem" end>
-            {!sidebarCollapsed && t('nav.overview')}
-            {sidebarCollapsed && '⌂'}
+            <span className="flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.overview')}
+            </span>
           </NavLink>
           <NavLink to="/merchant/orders" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.orders')}
-            {sidebarCollapsed && '📋'}
+            <span className="flex items-center gap-2">
+              <Activity className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.orders')}
+            </span>
           </NavLink>
           <NavLink to="/merchant/products" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.products')}
+            <span className="flex items-center gap-2">
+              <Package className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.products')}
+            </span>
           </NavLink>
           <NavLink to="/merchant/categories" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.categories')}
+            <span className="flex items-center gap-2">
+              <FolderTree className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.categories')}
+            </span>
           </NavLink>
           <NavLink to="/merchant/knowledge" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.knowledge')}
+            <span className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.knowledge')}
+            </span>
           </NavLink>
           <NavLink to="/merchant/promotions" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.promotions')}
+            <span className="flex items-center gap-2">
+              <Tag className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.promotions')}
+            </span>
           </NavLink>
           <NavLink to="/merchant/payment-accounts" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.paymentAccounts')}
+            <span className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.paymentAccounts')}
+            </span>
           </NavLink>
           <NavLink to="/merchant/bank-sync" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.bankSync')}
+            <span className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.bankSync')}
+            </span>
           </NavLink>
           <NavLink to="/merchant/operations" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.operations')}
+            <span className="flex items-center gap-2">
+              <Activity className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.operations')}
+            </span>
           </NavLink>
           <NavLink to="/merchant/telegram" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.telegram')}
+            <span className="flex items-center gap-2">
+              <Send className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.telegram')}
+            </span>
           </NavLink>
           <NavLink to="/merchant/channels" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.messaging')}
+            <span className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.messaging')}
+            </span>
           </NavLink>
           <NavLink to="/merchant/customers" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.customers')}
+            <span className="flex items-center gap-2">
+              <Users className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.customers')}
+            </span>
           </NavLink>
           <NavLink to="/merchant/settings" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.settings')}
+            <span className="flex items-center gap-2">
+              <Settings className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.settings')}
+            </span>
           </NavLink>
           <NavLink to="/pricing" className={navLinkClass} role="menuitem">
-            {!sidebarCollapsed && t('nav.plans')}
+            <span className="flex items-center gap-2">
+              <PlanIcon className="h-4 w-4 shrink-0" />
+              {!sidebarCollapsed && t('nav.plans')}
+            </span>
           </NavLink>
         </nav>
       </aside>
@@ -140,27 +204,27 @@ export default function MerchantLayout() {
             <button
               type="button"
               onClick={toggleDark}
-              className="p-2 rounded-lg text-[var(--armai-text-muted)] hover:bg-[var(--armai-surface-elevated)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)]"
+              className="p-2 rounded-lg text-[var(--armai-text-muted)] hover:bg-[var(--armai-surface-elevated)] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)] transition-shadow"
               aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
-              {theme === 'dark' ? '☀' : '🌙'}
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
             <span
               className="p-2 rounded-lg text-[var(--armai-text-muted)] cursor-default"
               aria-label="Notifications"
             >
-              🔔
+              <Bell className="h-5 w-5" />
             </span>
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setMenuOpen((o) => !o)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--armai-surface-elevated)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)]"
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-[var(--armai-surface-elevated)] hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)] transition-shadow"
                 aria-expanded={menuOpen}
                 aria-haspopup="true"
                 aria-label="User menu"
               >
-                <span className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-sm font-semibold text-[var(--armai-primary)]">
+                <span className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--armai-gradient-start)] to-[var(--armai-gradient-end)] flex items-center justify-center text-sm font-semibold text-white shadow">
                   {(user?.email ?? '?').slice(0, 1).toUpperCase()}
                 </span>
                 {user?.email && (
@@ -178,11 +242,12 @@ export default function MerchantLayout() {
                   />
                   <div
                     role="menu"
-                    className="absolute right-0 top-full mt-1 py-1 w-56 rounded-lg border border-[var(--armai-border)] bg-[var(--armai-surface-elevated)] shadow-lg z-20"
+                    className="absolute right-0 top-full mt-1 py-1 w-56 rounded-xl border border-[var(--armai-border)] bg-[var(--armai-surface-elevated)] shadow-xl z-20 backdrop-blur-sm"
                   >
                     <div className="px-3 py-2 border-b border-[var(--armai-border-muted)] text-sm text-[var(--armai-text-muted)]">
                       {user?.email}
                     </div>
+                    <LanguageSwitcher inDropdown onSelect={() => setMenuOpen(false)} />
                     <NavLink
                       to="/merchant/settings"
                       className="block px-3 py-2 text-sm text-[var(--armai-text)] hover:bg-[var(--armai-surface)]"

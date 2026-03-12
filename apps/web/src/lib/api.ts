@@ -45,13 +45,25 @@ export const authApi = {
 }
 
 export interface PlanPublic {
-  code: 'basic' | 'pro'
-  nameKey: string
-  monthlyPriceUsd: number
-  monthlyPriceKip: number
+  id?: string
+  code: string
+  name: string
+  priceLak: number
   features: string[]
   maxUsers: number | null
-  supportLevel: string
+}
+
+export interface AdminPlanRow {
+  id: string
+  name: string
+  code: string
+  price_lak: number
+  features: string[]
+  max_users: number | null
+  active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
 }
 
 export const plansApi = {
@@ -59,7 +71,7 @@ export const plansApi = {
 }
 
 export interface CreateCheckoutBody {
-  plan_code: 'basic' | 'pro'
+  plan_code: string
   success_url: string
   cancel_url: string
   customer_email?: string | null
@@ -219,6 +231,34 @@ export const superApi = {
     request<{ logs: unknown[] }>(`/super/audit${limit != null ? `?limit=${limit}` : ''}`, {
       token,
     }),
+  plans: (token: string) => request<{ plans: AdminPlanRow[] }>('/super/plans', { token }),
+  createPlan: (
+    token: string,
+    body: {
+      name: string
+      code: string
+      price_lak: number
+      features: string[]
+      max_users?: number | null
+      active?: boolean
+      sort_order?: number
+    }
+  ) => request<AdminPlanRow>('/super/plans', { method: 'POST', token, body }),
+  updatePlan: (
+    token: string,
+    id: string,
+    body: Partial<{
+      name: string
+      code: string
+      price_lak: number
+      features: string[]
+      max_users: number | null
+      active: boolean
+      sort_order: number
+    }>
+  ) => request<AdminPlanRow>(`/super/plans/${id}`, { method: 'PATCH', token, body }),
+  deletePlan: (token: string, id: string) =>
+    request<{ ok: boolean }>(`/super/plans/${id}`, { method: 'DELETE', token }),
   supportStart: (token: string, merchantId: string) =>
     request<{ supportSessionId: string; merchantId: string; readOnly: boolean }>('/support/start', {
       method: 'POST',

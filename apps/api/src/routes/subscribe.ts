@@ -15,7 +15,7 @@ app.use('/*', resolveMerchant)
 app.use('/*', requireMerchantAdmin)
 
 const createCheckoutBodySchema = z.object({
-  plan_code: z.enum(['basic', 'pro']),
+  plan_code: z.string().min(1).max(64),
   success_url: z.string().url(),
   cancel_url: z.string().url(),
   customer_email: z.string().email().optional().nullable(),

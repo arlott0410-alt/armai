@@ -12,8 +12,21 @@ import {
   StatusBadge,
   PanelCard,
 } from '../../components/ui'
+import { DashboardSkeleton } from '../../components/ui/DashboardSkeleton'
 import { theme } from '../../theme'
 import { useI18n } from '../../i18n/I18nProvider'
+import { motion } from 'framer-motion'
+import {
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from 'recharts'
 
 export default function MerchantDashboard() {
   const { user } = useAuth()
@@ -31,7 +44,7 @@ export default function MerchantDashboard() {
   }, [token])
 
   if (error) return <p style={{ color: theme.danger }}>{error}</p>
-  if (!data) return <p style={{ color: theme.textSecondary }}>Loading...</p>
+  if (!data) return <DashboardSkeleton />
 
   const summary = data.summary
   const readiness = data.readiness ?? []
@@ -39,19 +52,32 @@ export default function MerchantDashboard() {
   const totalSteps = readiness.length
   const progressPct = totalSteps > 0 ? Math.round((readyCount / totalSteps) * 100) : 0
 
+  const revenueData = summary
+    ? [
+        { name: 'Mon', value: summary.paidToday ?? 0 },
+        { name: 'Tue', value: Math.round((summary.paidToday ?? 0) * 0.8) },
+        { name: 'Wed', value: Math.round((summary.paidToday ?? 0) * 1.2) },
+        { name: 'Thu', value: Math.round((summary.paidToday ?? 0) * 0.9) },
+        { name: 'Fri', value: summary.paidToday ?? 0 },
+        { name: 'Today', value: summary.paidToday ?? 0 },
+      ]
+    : []
+  const messagingData = [
+    { name: 'Orders', value: summary?.ordersToday ?? 0, color: 'var(--armai-primary)' },
+    { name: 'Pending', value: summary?.pendingPayment ?? 0, color: 'var(--armai-warning)' },
+    { name: 'Paid', value: summary?.paidToday ?? 0, color: 'var(--armai-accent)' },
+  ].filter((d) => d.value > 0)
+
   return (
     <PageShell
       title={t('merchant.overview.title')}
       description={t('merchant.overview.description')}
     >
       {summary != null && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-            gap: 16,
-            marginBottom: 28,
-          }}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 mb-6"
         >
           <StatCard
             label={t('kpi.ordersToday')}
@@ -65,7 +91,78 @@ export default function MerchantDashboard() {
           <StatCard label={t('kpi.readyToShip')} value={summary.readyToShipCount ?? 0} />
           <StatCard label={t('kpi.activeProducts')} value={summary.activeProductsCount} />
           <StatCard label={t('kpi.paymentAccounts')} value={summary.activePaymentAccountsCount} />
-        </div>
+        </motion.div>
+      )}
+
+      {summary != null && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="grid md:grid-cols-2 gap-6 mb-8"
+        >
+          <div className="rounded-xl border border-[var(--armai-border)] bg-[var(--armai-surface)] p-4 glass-card">
+            <h3 className="text-sm font-medium text-[var(--armai-text-secondary)] mb-4">
+              Revenue (sample)
+            </h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={revenueData}>
+                <XAxis dataKey="name" stroke="var(--armai-text-muted)" fontSize={12} />
+                <YAxis stroke="var(--armai-text-muted)" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    background: 'var(--armai-surface-elevated)',
+                    border: '1px solid var(--armai-border)',
+                    borderRadius: 8,
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="var(--armai-primary)"
+                  strokeWidth={2}
+                  dot={{ fill: 'var(--armai-primary)' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="rounded-xl border border-[var(--armai-border)] bg-[var(--armai-surface)] p-4 glass-card">
+            <h3 className="text-sm font-medium text-[var(--armai-text-secondary)] mb-4">
+              Orders / Payment
+            </h3>
+            {messagingData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={messagingData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                    nameKey="name"
+                  >
+                    {messagingData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      background: 'var(--armai-surface-elevated)',
+                      border: '1px solid var(--armai-border)',
+                      borderRadius: 8,
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[200px] flex items-center justify-center text-[var(--armai-text-muted)] text-sm">
+                No data
+              </div>
+            )}
+          </div>
+        </motion.div>
       )}
 
       <Section

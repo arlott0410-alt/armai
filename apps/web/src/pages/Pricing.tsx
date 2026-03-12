@@ -35,7 +35,7 @@ export default function Pricing() {
       .catch(() => {})
   }, [user?.accessToken])
 
-  const handleChoosePlan = async (planCode: 'basic' | 'pro') => {
+  const handleChoosePlan = async (planCode: string) => {
     if (!user?.accessToken) {
       navigate('/login')
       return
@@ -93,20 +93,15 @@ export default function Pricing() {
             return (
               <div
                 key={plan.code}
-                className="rounded-xl border border-[var(--armai-border)] bg-[var(--armai-surface)] p-6 flex flex-col"
+                className="rounded-xl border border-[var(--armai-border)] bg-[var(--armai-surface)] p-6 flex flex-col glass-card shadow-lg hover:shadow-xl transition-shadow"
               >
-                <h2 className="text-lg font-semibold text-[var(--armai-text)] mb-1">
-                  {plan.code === 'basic' ? t('plan.basic') : t('plan.pro')}
-                </h2>
+                <h2 className="text-lg font-semibold text-[var(--armai-text)] mb-1">{plan.name}</h2>
                 <div className="flex items-baseline gap-1 mb-4">
-                  <span className="text-3xl font-bold text-[var(--armai-primary)]">
-                    ${plan.monthlyPriceUsd}
+                  <span className="text-3xl font-bold bg-gradient-to-r from-[var(--armai-gradient-start)] to-[var(--armai-gradient-end)] bg-clip-text text-transparent">
+                    ₭{KIP_FORMAT.format(plan.priceLak)}
                   </span>
                   <span className="text-[var(--armai-text-muted)]">{t('plan.perMonth')}</span>
                 </div>
-                <p className="text-sm text-[var(--armai-text-muted)] mb-4">
-                  ≈ {KIP_FORMAT.format(plan.monthlyPriceKip)} ກີບ
-                </p>
                 <ul className="space-y-2 mb-6 flex-1">
                   {plan.features.map((f, i) => (
                     <li

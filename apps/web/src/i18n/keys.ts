@@ -53,6 +53,18 @@ export const I18N_KEYS = [
   'common.error',
   'common.save',
   'common.cancel',
+  'nav.admin',
+  'admin.plans',
+  'admin.users',
+  'admin.billing',
+  'admin.analytics',
+  'admin.support',
+  'admin.audit',
+  'admin.settings',
+  'admin.aiTools',
+  'locale.lao',
+  'locale.english',
+  'locale.thai',
 ] as const
 
 export type I18nKey = (typeof I18N_KEYS)[number]

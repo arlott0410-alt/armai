@@ -1,32 +1,46 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { SUBSCRIPTION_PLAN_CATALOG, getPlanByCode, type PlanCode } from '@armai/shared'
+import {
+  SUBSCRIPTION_PLAN_CATALOG,
+  getPlanByCode as getCatalogPlan,
+  type PlanCode,
+} from '@armai/shared'
 import * as billing from './billing.js'
 import * as merchantService from './merchant.js'
+import * as plansDb from './plans-db.js'
 
-/** USD to LAK approximate rate for display (configurable via env in production). */
-const USD_TO_LAK = 20_000
+/** Default LAK prices when subscription_plans table is empty. */
+const FALLBACK_PLANS_LAK: Record<string, number> = { basic: 1_072_000, pro: 6_432_000 }
 
 export interface PlanPublic {
-  code: PlanCode
-  nameKey: string
-  monthlyPriceUsd: number
-  monthlyPriceKip: number
+  id?: string
+  code: string
+  name: string
+  priceLak: number
   features: string[]
   maxUsers: number | null
-  supportLevel: string
 }
 
-export function getPlansPublic(): PlanPublic[] {
+/** List plans from DB (LAK). Fallback to hardcoded if table empty. */
+export async function getPlansPublic(supabase: SupabaseClient): Promise<PlanPublic[]> {
+  const rows = await plansDb.listPlansPublic(supabase)
+  if (rows.length > 0) {
+    return rows.map((r) => ({
+      id: r.id,
+      code: r.code,
+      name: r.name,
+      priceLak: r.price_lak,
+      features: r.features,
+      maxUsers: r.max_users,
+    }))
+  }
   return (['basic', 'pro'] as const).map((code) => {
     const p = SUBSCRIPTION_PLAN_CATALOG[code]
     return {
       code: p.code,
-      nameKey: p.nameKey,
-      monthlyPriceUsd: p.monthlyPriceUsd,
-      monthlyPriceKip: Math.round(p.monthlyPriceUsd * USD_TO_LAK),
+      name: p.nameKey,
+      priceLak: FALLBACK_PLANS_LAK[code] ?? 0,
       features: p.features,
       maxUsers: p.maxUsers,
-      supportLevel: p.supportLevel,
     }
   })
 }
@@ -35,7 +49,7 @@ export async function getMerchantSubscription(
   supabase: SupabaseClient,
   merchantId: string
 ): Promise<{
-  plan: (typeof SUBSCRIPTION_PLAN_CATALOG)[PlanCode] | null
+  plan: PlanPublic | null
   planCode: string
   billingStatus: string
   currentPeriodEnd: string | null
@@ -43,9 +57,19 @@ export async function getMerchantSubscription(
 } | null> {
   const planRow = await billing.getMerchantPlan(supabase, merchantId)
   if (!planRow) return null
-  const plan = getPlanByCode(planRow.plan_code)
+  const dbPlan = await plansDb.getPlanByCode(supabase, planRow.plan_code)
+  const plan: PlanPublic | null = dbPlan
+    ? {
+        id: dbPlan.id,
+        code: dbPlan.code,
+        name: dbPlan.name,
+        priceLak: dbPlan.price_lak,
+        features: dbPlan.features,
+        maxUsers: dbPlan.max_users,
+      }
+    : null
   return {
-    plan: plan ?? null,
+    plan,
     planCode: planRow.plan_code,
     billingStatus: planRow.billing_status,
     currentPeriodEnd: planRow.current_period_end ?? null,
@@ -89,8 +113,13 @@ export async function createCheckout(
   },
   params: CreateCheckoutParams
 ): Promise<CreateCheckoutResult> {
-  const plan = getPlanByCode(params.planCode)
-  if (!plan) return { checkoutUrl: null, paymentId: null, error: 'Invalid plan' }
+  const dbPlan = await plansDb.getPlanByCode(supabase, params.planCode)
+  const catalogPlan = getCatalogPlan(params.planCode)
+  const priceLak = dbPlan?.price_lak ?? FALLBACK_PLANS_LAK[params.planCode] ?? 0
+  const planName = dbPlan?.name ?? catalogPlan?.nameKey ?? params.planCode
+  const features = dbPlan?.features ?? catalogPlan?.features ?? []
+  if (!dbPlan && !catalogPlan && priceLak <= 0)
+    return { checkoutUrl: null, paymentId: null, error: 'Invalid plan' }
 
   const merchant = await merchantService
     .getMerchantById(supabase, params.merchantId)
@@ -112,13 +141,13 @@ export async function createCheckout(
       .insert({
         merchant_id: params.merchantId,
         provider: 'bcel_onepay',
-        amount: plan.monthlyPriceUsd,
-        currency: 'USD',
+        amount: priceLak,
+        currency: 'LAK',
         status: 'pending',
         customer_email: params.customerEmail ?? null,
         customer_phone: params.customerPhone ?? null,
         billing_address: params.billingAddress ?? null,
-        metadata: { plan_code: params.planCode },
+        metadata: { plan_code: params.planCode, plan_name: planName },
       })
       .select('id')
       .single()
@@ -144,10 +173,10 @@ export async function createCheckout(
           {
             price_data: {
               currency: 'usd',
-              unit_amount: Math.round(plan.monthlyPriceUsd * 100),
+              unit_amount: Math.round((priceLak / 20000) * 100), // LAK to USD approx for Stripe
               product_data: {
-                name: plan.nameKey,
-                description: plan.features.join(', '),
+                name: planName,
+                description: features.join(', '),
               },
               recurring: { interval: 'month' },
             },
@@ -168,8 +197,8 @@ export async function createCheckout(
         merchant_id: params.merchantId,
         provider: 'stripe',
         external_id: session.id,
-        amount: plan.monthlyPriceUsd,
-        currency: 'USD',
+        amount: priceLak,
+        currency: 'LAK',
         status: 'pending',
       })
       return {
@@ -195,8 +224,8 @@ export async function activateSubscription(
   planCode: string,
   paymentExternalId?: string
 ): Promise<void> {
-  const plan = getPlanByCode(planCode)
-  if (!plan) return
+  const dbPlan = await plansDb.getPlanByCodeAny(supabase, planCode)
+  const priceLak = dbPlan?.price_lak ?? FALLBACK_PLANS_LAK[planCode] ?? 0
 
   const now = new Date()
   const periodStart = now
@@ -207,8 +236,8 @@ export async function activateSubscription(
   await billing.upsertMerchantPlan(supabase, merchantId, {
     plan_code: planCode,
     billing_status: 'active',
-    monthly_price_usd: plan.monthlyPriceUsd,
-    currency: 'USD',
+    monthly_price_usd: priceLak / 20000,
+    currency: 'LAK',
     current_period_start: periodStart.toISOString(),
     current_period_end: periodEnd.toISOString(),
     next_billing_at: nextBilling.toISOString(),
@@ -220,8 +249,8 @@ export async function activateSubscription(
 
   await billing.createBillingEvent(supabase, merchantId, {
     event_type: 'subscription_charge',
-    amount: plan.monthlyPriceUsd,
-    currency: 'USD',
+    amount: priceLak,
+    currency: 'LAK',
     invoice_period_start: periodStart.toISOString(),
     invoice_period_end: periodEnd.toISOString(),
     due_at: now.toISOString(),

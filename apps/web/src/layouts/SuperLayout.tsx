@@ -69,6 +69,9 @@ export default function SuperLayout() {
           <NavLink to="/super/audit" style={navStyle}>
             Audit
           </NavLink>
+          <NavLink to="/admin/plans" style={navStyle}>
+            Plans (Admin)
+          </NavLink>
         </nav>
         <div
           style={{ marginTop: 'auto', paddingTop: 24, borderTop: `1px solid ${theme.borderMuted}` }}

@@ -60,6 +60,18 @@ export const en: Dictionary = {
   'common.error': 'Error',
   'common.save': 'Save',
   'common.cancel': 'Cancel',
+  'nav.admin': 'Admin',
+  'admin.plans': 'Plans',
+  'admin.users': 'Users',
+  'admin.billing': 'Billing',
+  'admin.analytics': 'Analytics',
+  'admin.support': 'Support',
+  'admin.audit': 'Audit',
+  'admin.settings': 'Settings',
+  'admin.aiTools': 'AI Tools',
+  'locale.lao': 'Lao',
+  'locale.english': 'English',
+  'locale.thai': 'Thai',
 }
 
 export const th: Dictionary = {
@@ -78,7 +90,7 @@ export const th: Dictionary = {
   'nav.telegram': 'Telegram',
   'nav.messaging': 'แชต',
   'nav.customers': 'ลูกค้า',
-  'nav.settings': 'ตั้งค่า',
+  'nav.settings': 'การตั้งค่า',
   'nav.subscribe': 'สมัครสมาชิก',
   'nav.plans': 'แผน',
   'nav.payment': 'การชำระเงิน',
@@ -117,6 +129,18 @@ export const th: Dictionary = {
   'common.error': 'ข้อผิดพลาด',
   'common.save': 'บันทึก',
   'common.cancel': 'ยกเลิก',
+  'nav.admin': 'แอดมิน',
+  'admin.plans': 'แผน',
+  'admin.users': 'ผู้ใช้',
+  'admin.billing': 'การชำระเงิน',
+  'admin.analytics': 'วิเคราะห์',
+  'admin.support': 'สนับสนุน',
+  'admin.audit': 'ตรวจสอบ',
+  'admin.settings': 'การตั้งค่า',
+  'admin.aiTools': 'เครื่องมือ AI',
+  'locale.lao': 'ลาว',
+  'locale.english': 'English',
+  'locale.thai': 'ไทย',
 }
 
 export const lo: Dictionary = {
@@ -174,6 +198,18 @@ export const lo: Dictionary = {
   'common.error': 'ຜິດພາດ',
   'common.save': 'ບັນທຶກ',
   'common.cancel': 'ຍົກເລີກ',
+  'nav.admin': 'ເກັບຄຸ້ມ',
+  'admin.plans': 'ແຜນການ',
+  'admin.users': 'ຜູ້ໃຊ້',
+  'admin.billing': 'ການຊຳລະ',
+  'admin.analytics': 'ວິເຄາະ',
+  'admin.support': 'ສະໜັບສະໜູນ',
+  'admin.audit': 'ກວດສອບ',
+  'admin.settings': 'ຕັ້ງຄ່າ',
+  'admin.aiTools': 'ເຄື່ອງມື AI',
+  'locale.lao': 'ລາວ',
+  'locale.english': 'English',
+  'locale.thai': 'ໄທ',
 }
 
 export const dictionaries: Record<Locale, Dictionary> = { en, th, lo }

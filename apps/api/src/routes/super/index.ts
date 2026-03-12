@@ -3,6 +3,7 @@ import type { Env } from '../../env.js'
 import { authMiddleware, requireSuperAdmin } from '../../middleware/auth.js'
 import { getSupabaseAdmin } from '../../lib/supabase.js'
 import * as merchantService from '../../services/merchant.js'
+import plansRoutes from './plans.js'
 import * as supportService from '../../services/support.js'
 import * as superDashboard from '../../services/super-dashboard.js'
 import * as billingService from '../../services/billing.js'
@@ -21,6 +22,8 @@ const app = new Hono<{
 
 app.use('/*', authMiddleware)
 app.use('/*', requireSuperAdmin)
+
+app.route('/plans', plansRoutes)
 
 app.get('/dashboard', async (c) => {
   const supabase = getSupabaseAdmin(c.env)

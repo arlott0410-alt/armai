@@ -28,6 +28,9 @@ import MerchantChannels from './pages/merchant/MerchantChannels'
 import MerchantCustomers from './pages/merchant/MerchantCustomers'
 import MerchantCustomerDetail from './pages/merchant/MerchantCustomerDetail'
 import MerchantOperationsFeed from './pages/merchant/MerchantOperationsFeed'
+import AdminLayout from './layouts/AdminLayout'
+import AdminPlans from './pages/admin/AdminPlans'
+import AdminPlaceholder from './pages/admin/AdminPlaceholder'
 
 function ProtectedRoute({
   children,
@@ -63,6 +66,20 @@ export default function App() {
         <Route path="billing" element={<SuperBilling />} />
         <Route path="support" element={<SuperSupport />} />
         <Route path="audit" element={<SuperAudit />} />
+      </Route>
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute requireSuper>
+            <AdminLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<Navigate to="/admin/plans" replace />} />
+        <Route path="plans" element={<AdminPlans />} />
+        <Route path="analytics" element={<AdminPlaceholder page="analytics" />} />
+        <Route path="settings" element={<AdminPlaceholder page="settings" />} />
+        <Route path="ai-tools" element={<AdminPlaceholder page="ai-tools" />} />
       </Route>
       <Route
         path="/merchant"
