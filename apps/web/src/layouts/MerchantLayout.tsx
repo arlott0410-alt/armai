@@ -23,7 +23,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useI18n } from '../i18n/I18nProvider'
 import { deriveLocaleFromMerchant } from '../i18n/locales'
-import { merchantApi } from '../lib/api'
+import { merchantApi, getBaseUrl } from '../lib/api'
+import { toast } from 'sonner'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { MobileDrawer } from '../components/MobileDrawer'
 import { useMediaQuery } from '../hooks/useMediaQuery'
@@ -50,7 +51,7 @@ const getMerchantNavItems = (): NavItem[] => [
 ]
 
 export default function MerchantLayout() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, refreshUser } = useAuth()
   const navigate = useNavigate()
   const { t, setLocale } = useI18n()
   const { theme, toggleDark } = useTheme()
@@ -58,7 +59,14 @@ export default function MerchantLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [onboardLoading, setOnboardLoading] = useState(false)
+  const [onboardError, setOnboardError] = useState<string | null>(null)
   const token = user?.accessToken ?? null
+
+  const needsOnboard =
+    user?.role === 'merchant_admin' &&
+    (!user?.merchantIds || user.merchantIds.length === 0) &&
+    !!token
 
   // Debug: help diagnose Forbidden after signup (role + merchant count)
   if (typeof console !== 'undefined' && console.log) {
@@ -87,6 +95,33 @@ export default function MerchantLayout() {
     await signOut()
     navigate('/login')
     setMenuOpen(false)
+  }
+
+  const handleCompleteOnboard = async () => {
+    if (!token || onboardLoading) return
+    setOnboardLoading(true)
+    setOnboardError(null)
+    try {
+      const base = getBaseUrl()
+      const res = await fetch(`${base}/onboard/merchant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json().catch(() => ({}))
+      if ((res.status === 200 || res.status === 201) && (data.ok || data.alreadyOnboarded)) {
+        await refreshUser()
+        toast.success(t('confirm.confirmSuccessToast'))
+      } else {
+        const errMsg = (data as { error?: string }).error ?? 'Onboard failed'
+        setOnboardError(errMsg)
+        toast.error(errMsg)
+      }
+    } catch {
+      setOnboardError('Request failed')
+      toast.error('Request failed')
+    } finally {
+      setOnboardLoading(false)
+    }
   }
 
   const navItemClass =
@@ -276,7 +311,31 @@ export default function MerchantLayout() {
           role="main"
           tabIndex={-1}
         >
-          <Outlet />
+          {needsOnboard ? (
+            <div className="flex min-h-[60vh] items-center justify-center p-4">
+              <div className="w-full max-w-md rounded-xl border border-[var(--armai-border)] bg-[var(--armai-surface)] p-6 text-center shadow-lg">
+                <h2 className="text-lg font-semibold text-[var(--armai-text)] mb-2">
+                  {t('onboard.completeTitle')}
+                </h2>
+                <p className="text-sm text-[var(--armai-text-muted)] mb-6">
+                  {t('onboard.completeSubtitle')}
+                </p>
+                {onboardError && (
+                  <p className="mb-4 text-sm text-[var(--armai-danger)]">{onboardError}</p>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCompleteOnboard}
+                  disabled={onboardLoading}
+                  className="w-full py-3 px-4 rounded-lg font-semibold bg-[var(--armai-primary)] text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                >
+                  {onboardLoading ? t('common.loading') : t('onboard.completeButton')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
     </div>
