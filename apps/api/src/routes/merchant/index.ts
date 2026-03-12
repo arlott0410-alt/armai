@@ -221,4 +221,44 @@ app.get('/ai/metrics', async (c) => {
   return c.json(metrics)
 })
 
+/** PUT /api/merchant/subscription-payments/:paymentId/slip — upload transfer slip (required for approval). */
+app.put('/subscription-payments/:paymentId/slip', async (c) => {
+  const paymentId = c.req.param('paymentId')
+  const merchantId = c.get('merchantId')
+  const supabase = getSupabaseAdmin(c.env)
+  const bucket = c.env.SLIP_BUCKET
+  if (!bucket) return c.json({ error: 'Slip upload not configured' }, 503)
+  const { data: payment, error: fetchErr } = await supabase
+    .from('subscription_payments')
+    .select('id, merchant_id, status')
+    .eq('id', paymentId)
+    .single()
+  if (fetchErr || !payment) return c.json({ error: 'Payment not found' }, 404)
+  if ((payment as { merchant_id: string }).merchant_id !== merchantId) {
+    return c.json({ error: 'Forbidden' }, 403)
+  }
+  if ((payment as { status: string }).status !== 'pending') {
+    return c.json({ error: 'Payment is not pending' }, 400)
+  }
+  const body = await c.req.parseBody().catch(() => ({}))
+  const file = body['slip'] ?? body['file']
+  if (!file || typeof file === 'string') {
+    return c.json({ error: 'Missing slip file' }, 400)
+  }
+  const f = file as File
+  const ext = f.name?.split('.').pop()?.toLowerCase() || 'jpg'
+  const safeExt = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? ext : 'jpg'
+  const key = `subscription-slips/${paymentId}/${crypto.randomUUID()}.${safeExt}`
+  const contentType = f.type || (safeExt === 'png' ? 'image/png' : 'image/jpeg')
+  await bucket.put(key, f.stream(), {
+    httpMetadata: { contentType },
+  })
+  const { error: updateErr } = await supabase
+    .from('subscription_payments')
+    .update({ slip_url: key, updated_at: new Date().toISOString() })
+    .eq('id', paymentId)
+  if (updateErr) return c.json({ error: updateErr.message }, 500)
+  return c.json({ slip_url: key, ok: true })
+})
+
 export default app

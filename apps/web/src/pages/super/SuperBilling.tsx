@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useI18n } from '../../i18n/I18nProvider'
-import { superApi } from '../../lib/api'
+import { superApi, getSlipUrl } from '../../lib/api'
 import { toast } from 'sonner'
 import { PageShell, Card, CardHeader, CardBody, EmptyState } from '../../components/ui'
 import { theme } from '../../theme'
@@ -22,6 +22,7 @@ export default function SuperBilling() {
       status: string
       created_at: string
       payment_type?: 'monthly' | 'annual' | null
+      slip_url?: string | null
     }[]
   >([])
   const [error, setError] = useState<string | null>(null)
@@ -115,6 +116,17 @@ export default function SuperBilling() {
                       textTransform: 'uppercase',
                     }}
                   >
+                    Slip
+                  </th>
+                  <th
+                    style={{
+                      padding: '12px 16px',
+                      color: theme.textMuted,
+                      fontWeight: 600,
+                      fontSize: 11,
+                      textTransform: 'uppercase',
+                    }}
+                  >
                     Date
                   </th>
                   <th
@@ -143,14 +155,29 @@ export default function SuperBilling() {
                       ₭{LAK_FMT.format(p.amount)} {p.currency}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
+                      {p.slip_url ? (
+                        <a
+                          href={getSlipUrl(p.slip_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[var(--armai-primary)] underline"
+                        >
+                          View
+                        </a>
+                      ) : (
+                        <span style={{ color: theme.textMuted }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
                       {p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <button
                         type="button"
-                        disabled={approvingId === p.id}
+                        disabled={approvingId === p.id || !p.slip_url}
                         onClick={() => handleApprove(p.id)}
                         className="px-3 py-1 rounded text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+                        title={!p.slip_url ? 'Slip required' : undefined}
                       >
                         {approvingId === p.id ? t('common.loading') : 'Approve'}
                       </button>

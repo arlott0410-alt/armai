@@ -286,6 +286,7 @@ export interface PendingPaymentRow {
   status: string
   created_at: string
   payment_type?: 'monthly' | 'annual' | null
+  slip_url?: string | null
   merchant_name?: string
 }
 
@@ -295,7 +296,7 @@ export async function listPendingSubscriptionPayments(
 ): Promise<PendingPaymentRow[]> {
   const { data: payments, error } = await supabase
     .from('subscription_payments')
-    .select('id, merchant_id, amount, currency, status, created_at, payment_type')
+    .select('id, merchant_id, amount, currency, status, created_at, payment_type, slip_url')
     .eq('status', 'pending')
     .order('created_at', { ascending: false })
     .limit(100)
@@ -313,19 +314,23 @@ export async function listPendingSubscriptionPayments(
   return list.map((p) => ({ ...p, merchant_name: nameById.get(p.merchant_id) ?? undefined }))
 }
 
-/** Approve a pending payment: extend expiry (monthly +30d, annual +365d) and mark payment succeeded. */
+/** Approve a pending payment: extend expiry (monthly +30d, annual +365d) and mark payment succeeded. Requires slip_url. */
 export async function approveSubscriptionPayment(
   supabase: SupabaseClient,
   paymentId: string
 ): Promise<{ ok: boolean; error?: string }> {
   const { data: payment, error: fetchError } = await supabase
     .from('subscription_payments')
-    .select('id, merchant_id, status, payment_type')
+    .select('id, merchant_id, status, payment_type, slip_url')
     .eq('id', paymentId)
     .single()
   if (fetchError || !payment) return { ok: false, error: 'Payment not found' }
   if ((payment as { status: string }).status !== 'pending') {
     return { ok: false, error: 'Payment is not pending' }
+  }
+  const slipUrl = (payment as { slip_url?: string | null }).slip_url
+  if (!slipUrl || slipUrl.trim() === '') {
+    return { ok: false, error: 'Transfer slip is required before approval' }
   }
   const merchantId = (payment as { merchant_id: string }).merchant_id
   const paymentType =

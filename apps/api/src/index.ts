@@ -22,6 +22,7 @@ import facebookWebhook from './routes/webhooks/facebook.js'
 import bankWebhook from './routes/webhooks/bank.js'
 import telegramWebhook from './routes/webhooks/telegram.js'
 import whatsappWebhook from './routes/webhooks/whatsapp.js'
+import systemRoutes from './routes/system/index.js'
 
 const app = new Hono<{ Bindings: Env; Variables: { correlationId: string } }>()
 
@@ -47,7 +48,21 @@ app.route('/api/plans', plans)
 app.route('/api/subscribe', subscribe)
 app.route('/api/super', superRoutes)
 app.route('/api/merchant', merchantRoutes)
+app.route('/api/system', systemRoutes)
 app.route('/api/settings', settings)
+/** Serve R2 slip images (e.g. subscription transfer slips). Key = path after /api/slip/ */
+app.get('/api/slip/*', async (c) => {
+  const key = c.req.path.replace(/^\/api\/slip\/?/, '')
+  if (!key) return c.json({ error: 'Missing key' }, 400)
+  const bucket = (c.env as Env).SLIP_BUCKET
+  if (!bucket) return c.json({ error: 'Not configured' }, 503)
+  const object = await bucket.get(key)
+  if (!object) return c.notFound()
+  const contentType = object.httpMetadata?.contentType ?? 'application/octet-stream'
+  return new Response(object.body, {
+    headers: { 'Content-Type': contentType, 'Cache-Control': 'private, max-age=86400' },
+  })
+})
 app.route('/api/orders', orders)
 app.route('/api/support', support)
 app.route('/api/webhooks/payment', paymentWebhook)

@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useI18n } from '../i18n/I18nProvider'
 import {
   plansApi,
   subscribeApi,
   subscriptionApi,
+  systemSettingsApi,
+  subscriptionPaymentsApi,
+  getSlipUrl,
   type PlanPublic,
   type SubscribeType,
 } from '../lib/api'
@@ -15,6 +19,14 @@ const LAK_FORMAT = new Intl.NumberFormat('lo-LA', { maximumFractionDigits: 0 })
 const STANDARD_PLAN_CODE = 'standard'
 const STANDARD_PRICE_LAK = 1_999_000
 const STANDARD_ANNUAL_LAK = 19_999_000
+const STANDARD_ANNUAL_PER_MONTH_LAK = Math.round(STANDARD_ANNUAL_LAK / 12)
+
+type BankSettings = {
+  bank_name: string
+  account_number: string
+  account_holder: string
+  qr_image_url: string | null
+} | null
 
 const STANDARD_FEATURES = [
   'Core AI features',
@@ -40,10 +52,21 @@ export default function Pricing() {
   } | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalType, setModalType] = useState<SubscribeType | null>(null)
+  const [paymentId, setPaymentId] = useState<string | null>(null)
+  const [bank, setBank] = useState<BankSettings>(null)
   const [submitLoading, setSubmitLoading] = useState(false)
+  const [slipUploaded, setSlipUploaded] = useState(false)
+  const [slipUploading, setSlipUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
   const now = useNow()
+
+  useEffect(() => {
+    systemSettingsApi
+      .get()
+      .then((r) => setBank(r.bank))
+      .catch(() => setBank(null))
+  }, [])
 
   useEffect(() => {
     plansApi
@@ -88,25 +111,25 @@ export default function Pricing() {
       .catch(() => {})
   }, [user?.accessToken])
 
-  const openModal = (type: SubscribeType) => {
+  const openModal = async (type: SubscribeType) => {
     if (!user?.accessToken) {
       navigate('/login')
       return
     }
     setError(null)
     setPendingMessage(null)
-    setModalType(type)
-    setModalOpen(true)
-  }
-
-  const handleModalConfirm = async () => {
-    if (!user?.accessToken || !modalType) return
-    setError(null)
+    setSlipUploaded(false)
+    setPaymentId(null)
+    if (type === 'trial') {
+      setModalType(type)
+      setModalOpen(true)
+      return
+    }
     setSubmitLoading(true)
     const base = window.location.origin
     try {
       const res = await subscribeApi.subscribe(user.accessToken, {
-        type: modalType,
+        type,
         success_url: `${base}/pricing`,
         cancel_url: `${base}/pricing`,
         customer_email: user.email ?? undefined,
@@ -125,7 +148,67 @@ export default function Pricing() {
         )
         setTimeout(() => setModalOpen(false), 1500)
       } else if (res.payment_id) {
-        setPendingMessage(t('pricing.pendingPayment'))
+        setPaymentId(res.payment_id)
+        setModalType(type)
+        setModalOpen(true)
+        setPendingMessage(null)
+      } else {
+        setError('Request failed')
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Request failed')
+    } finally {
+      setSubmitLoading(false)
+    }
+  }
+
+  const handleSlipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user?.accessToken || !paymentId) return
+    setSlipUploading(true)
+    setError(null)
+    try {
+      await subscriptionPaymentsApi.uploadSlip(user.accessToken, paymentId, file)
+      setSlipUploaded(true)
+      setPendingMessage(t('pricing.pendingPayment'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setSlipUploading(false)
+    }
+  }
+
+  const handleModalConfirm = async () => {
+    if (!user?.accessToken || !modalType) return
+    if (modalType === 'monthly' || modalType === 'annual') {
+      setModalOpen(false)
+      setModalType(null)
+      setPaymentId(null)
+      return
+    }
+    setError(null)
+    setSubmitLoading(true)
+    const base = window.location.origin
+    try {
+      const res = await subscribeApi.subscribe(user.accessToken, {
+        type: 'trial',
+        success_url: `${base}/pricing`,
+        cancel_url: `${base}/pricing`,
+        customer_email: user.email ?? undefined,
+      })
+      if (res.trial_started) {
+        setPendingMessage('Trial started. You have 7 days.')
+        setSub((prev) =>
+          prev
+            ? {
+                ...prev,
+                billingStatus: 'trialing',
+                trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                nextBillingAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              }
+            : null
+        )
+        setTimeout(() => setModalOpen(false), 1500)
       } else {
         setError('Request failed')
       }
@@ -163,6 +246,14 @@ export default function Pricing() {
   return (
     <div className="min-h-screen bg-[var(--armai-bg)] p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="flex items-center gap-2 text-sm text-[var(--armai-text-secondary)] hover:text-[var(--armai-text)] mb-4"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t('pricing.backButton')}
+        </button>
         <h1 className="text-2xl font-semibold text-[var(--armai-text)] mb-2">
           {t('pricing.title')}
         </h1>
@@ -234,8 +325,8 @@ export default function Pricing() {
               onClick={() => openModal('annual')}
               className="rounded-lg border-2 border-[var(--armai-primary)] bg-[var(--armai-primary)]/10 p-4 text-left hover:bg-[var(--armai-primary)]/20 relative"
             >
-              <span className="absolute top-2 right-2 text-xs font-medium px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                {t('pricing.annualDiscount')}
+              <span className="absolute top-2 right-2 bg-amber-500 text-black text-xs font-medium px-2 py-1 rounded">
+                {t('pricing.specialDiscountYearly')}
               </span>
               <div className="font-semibold text-[var(--armai-text)]">{t('pricing.payAnnual')}</div>
               <div className="text-2xl font-bold text-[var(--armai-primary)] mt-1">
@@ -243,6 +334,9 @@ export default function Pricing() {
               </div>
               <div className="text-xs text-[var(--armai-text-muted)] mt-1">
                 {t('pricing.perYear')}
+              </div>
+              <div className="text-xs text-[var(--armai-text-muted)] mt-0.5">
+                {t('pricing.perMonthEquivalent')}
               </div>
             </button>
           </div>
@@ -295,16 +389,43 @@ export default function Pricing() {
                     {modalType === 'annual'
                       ? '₭19,999,000 / ປີ — ໂອນເຂົ້າບັນຊີຕາມລາຍລະອຽດດ້ານລຸ່ມ.'
                       : '₭1,999,000 / ເດືອນ — ໂອນເຂົ້າບັນຊີຕາມລາຍລະອຽດດ້ານລຸ່ມ.'}{' '}
-                    ຫຼັງໂອນແລ້ວ ທີມງານຈະກວດສອບ ແລະ ເປີດໃຊ້ງານໃຫ້.
+                    ຫຼັງໂອນແລ້ວ ອັບໂຫຼດສະລິບດ້ານລຸ່ມ (ບັງຄັບ).
                   </p>
-                  <div className="rounded-lg bg-[var(--armai-bg)] p-3 text-sm text-[var(--armai-text)] font-mono mb-3">
-                    BCEL — ບັນຊີ ArmAI Subscription
-                    <br />
-                    ຫມາຍເຫດ: ຊື່ຮ້ານ / ເບີຕິດຕໍ່
-                  </div>
-                  <p className="text-xs text-[var(--armai-text-muted)]">
-                    {t('pricing.uploadSlip')} — ອັບໂຫຼດສລິບສາມາດເຮັດໄດ້ຫຼັງຢືນຢັນການໂອນ.
+                  {!bank ? (
+                    <p className="text-sm text-[var(--armai-text-muted)] mb-3">
+                      {t('common.loading')}
+                    </p>
+                  ) : (
+                    <div className="rounded-lg bg-[var(--armai-bg)] p-3 text-sm text-[var(--armai-text)] font-mono mb-3">
+                      {bank.bank_name} — {bank.account_holder}
+                      <br />
+                      {bank.account_number}
+                      <br />
+                      ຫມາຍເຫດ: ຊື່ຮ້ານ / ເບີຕິດຕໍ່
+                      {bank.qr_image_url && (
+                        <div className="mt-2">
+                          <img
+                            src={getSlipUrl(bank.qr_image_url)}
+                            alt="QR"
+                            className="h-20 w-20 object-contain"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <p className="text-xs font-medium text-[var(--armai-text)] mb-1">
+                    {t('pricing.uploadSlipRequired')}
                   </p>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleSlipUpload}
+                    disabled={!paymentId || slipUploading}
+                    className="block w-full text-sm text-[var(--armai-text-secondary)] mb-2"
+                  />
+                  {slipUploading && (
+                    <p className="text-xs text-[var(--armai-text-muted)]">{t('common.loading')}</p>
+                  )}
                 </>
               )}
               {pendingMessage && (
@@ -316,6 +437,7 @@ export default function Pricing() {
                   onClick={() => {
                     setModalOpen(false)
                     setModalType(null)
+                    setPaymentId(null)
                   }}
                   className="flex-1 py-2 rounded-lg border border-[var(--armai-border)] text-[var(--armai-text)] hover:bg-[var(--armai-surface-elevated)]"
                 >
@@ -323,7 +445,10 @@ export default function Pricing() {
                 </button>
                 <button
                   type="button"
-                  disabled={submitLoading}
+                  disabled={
+                    submitLoading ||
+                    ((modalType === 'monthly' || modalType === 'annual') && !slipUploaded)
+                  }
                   onClick={handleModalConfirm}
                   className="flex-1 py-2 rounded-lg bg-[var(--armai-primary)] text-white font-medium disabled:opacity-50"
                 >
@@ -331,7 +456,11 @@ export default function Pricing() {
                     ? t('common.loading')
                     : modalType === 'trial'
                       ? 'Start trial'
-                      : 'Confirm'}
+                      : modalType === 'monthly' || modalType === 'annual'
+                        ? slipUploaded
+                          ? 'Done'
+                          : t('pricing.uploadSlipRequired')
+                        : 'Confirm'}
                 </button>
               </div>
             </div>

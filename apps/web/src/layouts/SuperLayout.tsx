@@ -8,6 +8,7 @@ import {
   Headphones,
   FileCheck,
   Package,
+  Settings,
   ChevronDown,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -26,6 +27,7 @@ const superNavItems: { to: string; labelKey: I18nKey; icon: typeof LayoutDashboa
   { to: '/super/support', labelKey: 'super.support', icon: Headphones },
   { to: '/super/audit', labelKey: 'super.audit', icon: FileCheck },
   { to: '/super/plans', labelKey: 'admin.plans', icon: Package },
+  { to: '/super/settings', labelKey: 'admin.settings', icon: Settings },
 ]
 
 export default function SuperLayout() {

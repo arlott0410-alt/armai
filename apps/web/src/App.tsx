@@ -16,6 +16,7 @@ const SuperBilling = lazy(() => import('./pages/super/SuperBilling'))
 const SuperSupport = lazy(() => import('./pages/super/SuperSupport'))
 const SuperAudit = lazy(() => import('./pages/super/SuperAudit'))
 const SuperPlans = lazy(() => import('./pages/super/SuperPlans'))
+const SuperSettings = lazy(() => import('./pages/super/SuperSettings'))
 const MerchantDashboard = lazy(() => import('./pages/merchant/MerchantDashboard'))
 const MerchantOrders = lazy(() => import('./pages/merchant/MerchantOrders'))
 const MerchantOrderDetail = lazy(() => import('./pages/merchant/MerchantOrderDetail'))
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="support" element={<SuperSupport />} />
           <Route path="audit" element={<SuperAudit />} />
           <Route path="plans" element={<SuperPlans />} />
+          <Route path="settings" element={<SuperSettings />} />
         </Route>
         <Route
           path="/merchant"

@@ -11,6 +11,13 @@ export function getBaseUrl(): string {
   return u.endsWith('/api') ? u : `${u}/api`
 }
 
+/** Slip image URL from R2 key (served via GET /api/slip/:key). */
+export function getSlipUrl(key: string): string {
+  if (!key) return ''
+  const base = getBaseUrl()
+  return key.startsWith('http') ? key : `${base}/slip/${key}`
+}
+
 /** Rate limit: max concurrent in-flight requests */
 const MAX_CONCURRENT = 6
 let inFlight = 0
@@ -132,6 +139,65 @@ export const subscribeApi = {
       payment_id: string | null
       trial_started?: boolean
     }>('/subscribe', { method: 'POST', token, body }),
+}
+
+export interface SystemSettingsResponse {
+  bank: {
+    bank_name: string
+    account_number: string
+    account_holder: string
+    qr_image_url: string | null
+  } | null
+}
+
+export const systemSettingsApi = {
+  get: () => request<SystemSettingsResponse>('/system/settings'),
+  patch: (
+    token: string,
+    body: {
+      bank: {
+        bank_name: string
+        account_number: string
+        account_holder: string
+        qr_image_url?: string | null
+      }
+    }
+  ) => request<{ ok: boolean }>('/system/settings', { method: 'PATCH', token, body }),
+  uploadQr: async (token: string, file: File): Promise<{ qr_image_url: string }> => {
+    const base = getBaseUrl()
+    const url = `${base}/system/settings/upload-qr`
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`)
+    return data as { qr_image_url: string }
+  },
+}
+
+export const subscriptionPaymentsApi = {
+  uploadSlip: async (
+    token: string,
+    paymentId: string,
+    file: File
+  ): Promise<{ slip_url: string; ok: boolean }> => {
+    const base = getBaseUrl()
+    const url = `${base}/merchant/subscription-payments/${paymentId}/slip`
+    const form = new FormData()
+    form.append('slip', file)
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`)
+    return data as { slip_url: string; ok: boolean }
+  },
 }
 
 export interface MerchantSubscription {
@@ -281,6 +347,7 @@ export const superApi = {
         status: string
         created_at: string
         payment_type?: 'monthly' | 'annual' | null
+        slip_url?: string | null
       }[]
     }>('/super/billing/pending-payments', { token }),
   approveSubscriptionPayment: (token: string, paymentId: string) =>
