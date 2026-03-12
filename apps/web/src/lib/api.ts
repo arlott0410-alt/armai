@@ -109,6 +109,12 @@ export const superApi = {
       token,
       body: { merchantId },
     }),
+  channelMetrics: (token: string) =>
+    request<{
+      whatsappMerchantCount: number;
+      whatsappActiveConnections: number;
+      messagesByChannel: { facebook: number; whatsapp: number };
+    }>('/super/channel-metrics', { token }),
 };
 
 export interface SuperMerchantDetailResponse {
@@ -536,6 +542,93 @@ export const telegramApi = {
   updateAdmin: (token: string, adminId: string, body: Partial<{ telegram_username: string | null; telegram_display_name: string | null; role: string; is_active: boolean }>) =>
     request<{ admin: TelegramAdminRow }>(`/merchant/telegram/admins/${adminId}`, { method: 'PATCH', token, body }),
   test: (token: string) => request<{ ok: boolean; sent: boolean }>('/merchant/telegram/test', { method: 'POST', token }),
+};
+
+export interface WhatsAppConnectionRow {
+  id: string;
+  phone_number_id: string;
+  waba_id?: string | null;
+  business_account_name?: string | null;
+  is_active: boolean;
+  has_webhook_verify_token?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChannelsSummaryResponse {
+  facebook: { pageCount: number };
+  whatsapp: { connections: { id: string; phone_number_id: string; business_account_name: string | null; is_active: boolean }[] };
+}
+
+export const channelsApi = {
+  summary: (token: string) => request<ChannelsSummaryResponse>('/merchant/channels', { token }),
+};
+
+export const whatsappApi = {
+  list: (token: string) => request<{ connections: WhatsAppConnectionRow[] }>('/merchant/whatsapp', { token }),
+  create: (token: string, body: { phone_number_id: string; waba_id?: string | null; business_account_name?: string | null; access_token_reference?: string | null; webhook_verify_token?: string | null; is_active?: boolean }) =>
+    request<{ connection: WhatsAppConnectionRow }>('/merchant/whatsapp', { method: 'POST', token, body }),
+  update: (token: string, id: string, body: Partial<{ phone_number_id: string; waba_id: string | null; business_account_name: string | null; access_token_reference: string | null; webhook_verify_token: string | null; is_active: boolean }>) =>
+    request<{ connection: WhatsAppConnectionRow }>(`/merchant/whatsapp/${id}`, { method: 'PATCH', token, body }),
+  test: (token: string) => request<{ ok: boolean; message?: string }>('/merchant/whatsapp/test', { method: 'POST', token }),
+};
+
+export interface MerchantCustomerRow {
+  id: string;
+  merchant_id: string;
+  primary_display_name: string | null;
+  phone_number: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerChannelIdentityRow {
+  id: string;
+  merchant_id: string;
+  merchant_customer_id: string | null;
+  channel_type: string;
+  external_user_id: string;
+  channel_display_name: string | null;
+  phone_number: string | null;
+  last_seen_at: string;
+  created_at: string;
+}
+
+export interface MerchantCustomerDetailResponse {
+  customer: MerchantCustomerRow & { notes?: string | null; normalized_phone?: string | null };
+  identities: CustomerChannelIdentityRow[];
+  orderCount: number;
+  orders: { id: string; status: string; amount: number; payment_status: string; fulfillment_status: string | null; created_at: string }[];
+  recentMessages: { id: string; channel_type: string; direction: string; message_type: string; text_content: string | null; created_at: string }[];
+  identityEvents: { id: string; event_type: string; actor_type: string; created_at: string; reason: string | null }[];
+}
+
+export const customersApi = {
+  list: (token: string, params?: { limit?: number; offset?: number; status?: string }) =>
+    request<{ customers: MerchantCustomerRow[] }>(
+      `/merchant/customers${params ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : ''}`,
+      { token }
+    ),
+  get: (token: string, id: string) => request<MerchantCustomerDetailResponse>(`/merchant/customers/${id}`, { token }),
+  create: (token: string, body: { primary_display_name?: string | null; phone_number?: string | null; notes?: string | null; link_channel_identity_id?: string | null }) =>
+    request<{ customer: MerchantCustomerRow }>('/merchant/customers', { method: 'POST', token, body }),
+  update: (token: string, id: string, body: { primary_display_name?: string | null; phone_number?: string | null; notes?: string | null; status?: string }) =>
+    request<{ customer: MerchantCustomerRow }>(`/merchant/customers/${id}`, { method: 'PATCH', token, body }),
+};
+
+export const customerIdentitiesApi = {
+  list: (token: string, params?: { merchant_customer_id?: string; unlinked?: boolean }) =>
+    request<{ identities: CustomerChannelIdentityRow[] }>(
+      `/merchant/customer-identities${params ? `?${new URLSearchParams(params as Record<string, string>).toString()}` : ''}`,
+      { token }
+    ),
+  link: (token: string, body: { channel_identity_id: string; merchant_customer_id: string }) =>
+    request<{ ok: boolean }>('/merchant/customer-identities/link', { method: 'POST', token, body }),
+  unlink: (token: string, body: { channel_identity_id: string }) =>
+    request<{ ok: boolean }>('/merchant/customer-identities/unlink', { method: 'POST', token, body }),
+  suggestions: (token: string, merchantCustomerId: string) =>
+    request<{ suggestions: CustomerChannelIdentityRow[] }>(`/merchant/customer-identities/suggestions?merchant_customer_id=${merchantCustomerId}`, { token }),
 };
 
 export interface TelegramOperationEventRow {

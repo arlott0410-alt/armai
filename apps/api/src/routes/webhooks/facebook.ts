@@ -1,12 +1,16 @@
 import { Hono } from 'hono';
 import type { Env } from '../../env.js';
 import { getSupabaseAdmin } from '../../lib/supabase.js';
+import { resolvePageToMerchant, storeWebhookEvent } from '../../services/facebook-webhook.js';
 import {
-  resolvePageToMerchant,
-  storeWebhookEvent,
-  getOrCreateConversation,
-  bufferIncomingMessage,
-} from '../../services/facebook-webhook.js';
+  getOrCreateChannelConnectionFacebook,
+  getOrCreateChannelCustomer,
+  getOrCreateConversationForChannel,
+  insertChannelMessage,
+  bufferIncomingMessageForConversation,
+  setConversationMerchantCustomer,
+} from '../../services/channel.js';
+import * as customerIdentity from '../../services/customer-identity.js';
 import { facebookWebhookQuerySchema, facebookWebhookBodySchema } from '@armai/shared';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -78,11 +82,53 @@ app.post('/', async (c) => {
       const senderId = msg.sender?.id;
       if (!senderId) continue;
       if (!merchantId) continue;
-      const conversationId = await getOrCreateConversation(supabase, merchantId, pageId, senderId);
+      await getOrCreateChannelConnectionFacebook(supabase, merchantId, pageId);
+      await getOrCreateChannelCustomer(supabase, {
+        merchantId,
+        channelType: 'facebook',
+        externalUserId: senderId,
+      });
+      const { id: identityId, merchantCustomerId } = await customerIdentity.getOrCreateChannelIdentity(supabase, {
+        merchantId,
+        channelType: 'facebook',
+        externalUserId: senderId,
+      });
+      let linkedCustomerId: string | null = merchantCustomerId;
+      const identityRow = await supabase.from('customer_channel_identities').select('normalized_phone').eq('id', identityId).single();
+      if (!linkedCustomerId && identityRow.data?.normalized_phone) {
+        const autoLinked = await customerIdentity.tryAutoLinkByPhone(supabase, {
+          merchantId,
+          channelIdentityId: identityId,
+          normalizedPhone: identityRow.data.normalized_phone,
+        });
+        if (autoLinked) linkedCustomerId = autoLinked;
+      }
+      const conversationId = await getOrCreateConversationForChannel(supabase, {
+        merchantId,
+        channelType: 'facebook',
+        externalAccountId: pageId,
+        externalCustomerId: senderId,
+      });
+      if (linkedCustomerId) {
+        await setConversationMerchantCustomer(supabase, { merchantId, conversationId, merchantCustomerId: linkedCustomerId });
+      }
       const text = msg.message?.text ?? null;
       const mid = msg.message?.mid ?? null;
       const attachments = msg.message?.attachments ?? null;
-      await bufferIncomingMessage(supabase, {
+      const firstAttachmentUrl = attachments?.[0]?.payload?.url ?? null;
+      await insertChannelMessage(supabase, {
+        merchantId,
+        channelType: 'facebook',
+        externalMessageId: mid,
+        senderExternalId: senderId,
+        direction: 'inbound',
+        messageType: firstAttachmentUrl ? 'image' : 'text',
+        textContent: text,
+        mediaUrl: firstAttachmentUrl,
+        rawPayload: msg as unknown as Record<string, unknown>,
+        merchantCustomerId: linkedCustomerId ?? undefined,
+      });
+      await bufferIncomingMessageForConversation(supabase, {
         merchantId,
         conversationId,
         rawMid: mid,

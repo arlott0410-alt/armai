@@ -31,6 +31,8 @@ export interface BuiltContext {
     paymentTargetForOrder: unknown | null;
     codSettings: unknown | null;
     shipmentForOrder: unknown | null;
+    /** When conversation/order is linked to a unified customer, recent orders and interaction summary. */
+    unifiedCustomerSummary: string | null;
   };
 }
 
@@ -128,6 +130,39 @@ export async function buildAiContext(supabase: SupabaseClient, input: AiContextI
       currentOrderSummary = `Latest order: ${recentOrder.id} (${recentOrder.status}), payment ${recentOrder.payment_status}, fulfillment ${recentOrder.fulfillment_status ?? 'n/a'}, amount ${recentOrder.amount}.`;
     }
   }
+  let unifiedCustomerSummary: string | null = null;
+  const merchantCustomerIdFromConversation = conversationId
+    ? (await supabase.from('conversations').select('merchant_customer_id').eq('id', conversationId).eq('merchant_id', merchantId).single()).data?.merchant_customer_id
+    : null;
+  const merchantCustomerIdFromOrder = resolveOrderId
+    ? (await supabase.from('orders').select('merchant_customer_id').eq('id', resolveOrderId).eq('merchant_id', merchantId).single()).data?.merchant_customer_id
+    : null;
+  const linkedCustomerId = merchantCustomerIdFromConversation ?? merchantCustomerIdFromOrder ?? null;
+  if (linkedCustomerId) {
+    const [ordersByCustomer, lastMessage] = await Promise.all([
+      supabase
+        .from('orders')
+        .select('id, status, amount, payment_status, created_at')
+        .eq('merchant_id', merchantId)
+        .eq('merchant_customer_id', linkedCustomerId)
+        .order('created_at', { ascending: false })
+        .limit(5),
+      supabase
+        .from('channel_messages')
+        .select('channel_type, direction, text_content, created_at')
+        .eq('merchant_id', merchantId)
+        .eq('merchant_customer_id', linkedCustomerId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
+    const orderLines = (ordersByCustomer.data ?? []).map((o) => `Order ${o.id}: ${o.status}, ${o.payment_status}, amount ${o.amount}`).join('. ');
+    const lastLine = lastMessage.data
+      ? `Last activity: ${lastMessage.data.channel_type} ${lastMessage.data.direction} at ${lastMessage.data.created_at}${lastMessage.data.text_content ? `: "${lastMessage.data.text_content.slice(0, 80)}..."` : ''}.`
+      : '';
+    unifiedCustomerSummary = [orderLines, lastLine].filter(Boolean).join(' ') || 'Unified customer has linked channel identities.';
+  }
+
   const merchantSection = merchantPrompt ? `\n\nMerchant instructions:\n${merchantPrompt}` : '';
   const systemPrompt = PLATFORM_SYSTEM_PROMPT + merchantSection;
   return {
@@ -151,6 +186,7 @@ export async function buildAiContext(supabase: SupabaseClient, input: AiContextI
         cod_notes_for_ai: codSettingsRow.cod_notes_for_ai,
       } : null,
       shipmentForOrder: shipmentContext,
+      unifiedCustomerSummary,
     },
   };
 }

@@ -185,6 +185,25 @@ app.get('/audit', async (c) => {
   return c.json({ logs: data ?? [] });
 });
 
+app.get('/channel-metrics', async (c) => {
+  const supabase = getSupabaseAdmin(c.env);
+  const [waRows, waCount, fbCount, waMsgCount] = await Promise.all([
+    supabase.from('whatsapp_connections').select('merchant_id').eq('is_active', true),
+    supabase.from('whatsapp_connections').select('id', { count: 'exact', head: true }).eq('is_active', true),
+    supabase.from('channel_messages').select('id', { count: 'exact', head: true }).eq('channel_type', 'facebook'),
+    supabase.from('channel_messages').select('id', { count: 'exact', head: true }).eq('channel_type', 'whatsapp'),
+  ]);
+  const merchantIds = new Set((waRows.data ?? []).map((r: { merchant_id: string }) => r.merchant_id));
+  return c.json({
+    whatsappMerchantCount: merchantIds.size,
+    whatsappActiveConnections: waCount.count ?? 0,
+    messagesByChannel: {
+      facebook: fbCount.count ?? 0,
+      whatsapp: waMsgCount.count ?? 0,
+    },
+  });
+});
+
 async function createAuthUserAndMembership(
   env: Env,
   input: { admin_email: string; admin_password: string; admin_full_name?: string }

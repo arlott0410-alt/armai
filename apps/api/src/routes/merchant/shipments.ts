@@ -31,7 +31,7 @@ app.post('/:shipmentId/send-confirmation', async (c) => {
     .eq('merchant_id', merchantId)
     .single();
   if (!ship) return c.json({ error: 'Shipment not found' }, 404);
-  const result = await fulfillment.sendShippingConfirmation(supabase, { merchantId, orderId: ship.order_id, shipmentId });
+  const result = await fulfillment.sendShippingConfirmation(supabase, { merchantId, orderId: ship.order_id, shipmentId }, c.env);
   return c.json(result);
 });
 

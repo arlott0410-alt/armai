@@ -11,6 +11,11 @@ compatibility_date = "2024-11-01"
 binding = "SLIP_BUCKET"
 bucket_name = "armai-slips"
 
+# Channel media (WhatsApp/Facebook images, documents)
+[[r2_buckets]]
+binding = "CHANNEL_MEDIA_BUCKET"
+bucket_name = "armai-channel-media"
+
 # Secrets (set in Dashboard or wrangler secret put):
 # SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 # GEMINI_API_KEY

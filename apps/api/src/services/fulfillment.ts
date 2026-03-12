@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { FULFILLMENT_STATUS, SHIPMENT_STATUS } from '@armai/shared';
 import type { CreateShipmentBody, UpdateShipmentBody } from '@armai/shared';
+import type { Env } from '../env.js';
+import * as channelSender from './channel-sender.js';
 
 const FULFILLMENT_EVENT_TYPES = {
   PAYMENT_CONFIRMED: 'payment_confirmed',
@@ -190,7 +192,8 @@ export async function sendShippingConfirmation(
     merchantId: string;
     orderId: string;
     shipmentId: string;
-  }
+  },
+  env?: Env
 ): Promise<{ sent: boolean; message?: string }> {
   const { data: order } = await supabase
     .from('orders')
@@ -209,6 +212,24 @@ export async function sendShippingConfirmation(
   if (!shipment) return { sent: false };
 
   const contentText = formatShippingConfirmationMessage(shipment);
+
+  if (env) {
+    const result = await channelSender.sendChannelMessage({
+      supabase,
+      env,
+      conversationId: order.conversation_id,
+      payload: { text: contentText, message_type: 'text' },
+    });
+    await recordFulfillmentEvent(supabase, {
+      merchantId: p.merchantId,
+      orderId: p.orderId,
+      shipmentId: p.shipmentId,
+      eventType: FULFILLMENT_EVENT_TYPES.TRACKING_SENT_TO_CUSTOMER,
+      actorType: 'system',
+    });
+    return { sent: result.sent, message: contentText };
+  }
+
   const { error } = await supabase.from('messages').insert({
     merchant_id: p.merchantId,
     conversation_id: order.conversation_id,

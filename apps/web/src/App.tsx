@@ -21,6 +21,9 @@ import MerchantPromotions from './pages/merchant/MerchantPromotions';
 import MerchantPaymentAccounts from './pages/merchant/MerchantPaymentAccounts';
 import MerchantOrderDetail from './pages/merchant/MerchantOrderDetail';
 import MerchantTelegram from './pages/merchant/MerchantTelegram';
+import MerchantChannels from './pages/merchant/MerchantChannels';
+import MerchantCustomers from './pages/merchant/MerchantCustomers';
+import MerchantCustomerDetail from './pages/merchant/MerchantCustomerDetail';
 import MerchantOperationsFeed from './pages/merchant/MerchantOperationsFeed';
 
 function ProtectedRoute({ children, requireSuper }: { children: React.ReactNode; requireSuper?: boolean }) {
@@ -71,6 +74,9 @@ export default function App() {
         <Route path="bank-sync" element={<MerchantBankSync />} />
         <Route path="operations" element={<MerchantOperationsFeed />} />
         <Route path="telegram" element={<MerchantTelegram />} />
+        <Route path="channels" element={<MerchantChannels />} />
+        <Route path="customers" element={<MerchantCustomers />} />
+        <Route path="customers/:id" element={<MerchantCustomerDetail />} />
         <Route path="settings" element={<MerchantSettings />} />
       </Route>
       <Route path="/" element={<Navigate to="/login" replace />} />

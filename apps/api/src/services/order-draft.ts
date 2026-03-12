@@ -29,11 +29,22 @@ export async function createDraftOrder(
   const total = items.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
   const account = await paymentAccounts.selectAccountForOrder(supabase, merchantId, { totalAmount: total });
   if (!account) throw new Error('No payment account configured for merchant');
+  let merchantCustomerId: string | null = null;
+  if (conversationId) {
+    const { data: conv } = await supabase
+      .from('conversations')
+      .select('merchant_customer_id')
+      .eq('id', conversationId)
+      .eq('merchant_id', merchantId)
+      .single();
+    merchantCustomerId = conv?.merchant_customer_id ?? null;
+  }
   const { data: order, error: orderErr } = await supabase
     .from('orders')
     .insert({
       merchant_id: merchantId,
       conversation_id: conversationId ?? null,
+      merchant_customer_id: merchantCustomerId,
       customer_psid: customerPsid ?? null,
       customer_name: customerName ?? null,
       status: ORDER_STATUS.PENDING,

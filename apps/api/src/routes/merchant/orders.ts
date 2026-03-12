@@ -301,7 +301,7 @@ app.post('/:orderId/shipments', async (c) => {
   const { data: settings } = await supabase.from('merchant_settings').select('auto_send_shipping_confirmation').eq('merchant_id', merchantId).single();
   if (settings?.auto_send_shipping_confirmation) {
     try {
-      await fulfillment.sendShippingConfirmation(supabase, { merchantId, orderId, shipmentId: shipment.id });
+      await fulfillment.sendShippingConfirmation(supabase, { merchantId, orderId, shipmentId: shipment.id }, c.env);
     } catch {
       // non-fatal
     }

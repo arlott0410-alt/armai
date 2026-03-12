@@ -8,12 +8,18 @@ import { theme } from '../../theme';
 export default function SuperDashboard() {
   const { user } = useAuth();
   const [data, setData] = useState<SuperDashboardResponse | null>(null);
+  const [channelMetrics, setChannelMetrics] = useState<{
+    whatsappMerchantCount: number;
+    whatsappActiveConnections: number;
+    messagesByChannel: { facebook: number; whatsapp: number };
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const token = user?.accessToken ?? null;
 
   useEffect(() => {
     if (!token) return;
     superApi.dashboard(token).then(setData).catch((e) => setError(e.message));
+    superApi.channelMetrics(token).then(setChannelMetrics).catch(() => setChannelMetrics(null));
   }, [token]);
 
   if (error) return <p style={{ color: theme.danger }}>{error}</p>;
@@ -50,7 +56,32 @@ export default function SuperDashboard() {
         <StatCard label="Due in 7 days" value={kpis?.dueInNext7Days ?? 0} />
         <StatCard label="New this month" value={kpis?.newMerchantsThisMonth ?? 0} />
         <StatCard label="Activation ready" value={kpis?.activationReadyCount ?? 0} />
+        {channelMetrics != null && (
+          <>
+            <StatCard label="WhatsApp merchants" value={channelMetrics.whatsappMerchantCount} />
+            <StatCard label="WhatsApp connections" value={channelMetrics.whatsappActiveConnections} />
+          </>
+        )}
       </div>
+
+      {channelMetrics != null && (
+        <Section title="Messaging by channel" description="Total messages in channel_messages">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 16 }}>
+            <Card>
+              <CardBody>
+                <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Facebook</div>
+                <div style={{ fontSize: 20, fontWeight: 600, color: theme.text }}>{channelMetrics.messagesByChannel.facebook}</div>
+              </CardBody>
+            </Card>
+            <Card>
+              <CardBody>
+                <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>WhatsApp</div>
+                <div style={{ fontSize: 20, fontWeight: 600, color: theme.text }}>{channelMetrics.messagesByChannel.whatsapp}</div>
+              </CardBody>
+            </Card>
+          </div>
+        </Section>
+      )}
 
       {revenue != null && (
         <Section title="Revenue" description="Current and expected billing">

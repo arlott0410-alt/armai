@@ -17,6 +17,7 @@ import support from './routes/support.js';
 import facebookWebhook from './routes/webhooks/facebook.js';
 import bankWebhook from './routes/webhooks/bank.js';
 import telegramWebhook from './routes/webhooks/telegram.js';
+import whatsappWebhook from './routes/webhooks/whatsapp.js';
 
 const app = new Hono<{ Bindings: Env; Variables: { correlationId: string } }>();
 
@@ -45,6 +46,7 @@ app.route('/api/support', support);
 app.route('/api/webhooks/facebook', facebookWebhook);
 app.route('/api/webhooks/bank', bankWebhook);
 app.route('/api/webhooks/telegram', telegramWebhook);
+app.route('/api/webhooks/whatsapp', whatsappWebhook);
 
 app.notFound((c) => c.json({ error: 'Not Found' }, 404));
 app.onError((err, c) => {

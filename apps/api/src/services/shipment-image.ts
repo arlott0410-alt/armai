@@ -1,7 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import * as telegram from './telegram.js';
 import * as fulfillment from './fulfillment.js';
+import * as channelSender from './channel-sender.js';
 import { FULFILLMENT_STATUS } from '@armai/shared';
+import type { Env } from '../env.js';
 
 /** Normalize order reference from text: allow short code or full UUID. */
 function normalizeOrderReference(text: string): string | null {
@@ -224,14 +226,15 @@ async function linkShipmentImageToOrder(
   }
 }
 
-/** Send shipment confirmation (with image if available) to customer via messages. */
+/** Send shipment confirmation (with image if available) to customer via channel (messages + API when env provided). */
 export async function sendShipmentImageToCustomer(
   supabase: SupabaseClient,
   merchantId: string,
   orderId: string,
   shipmentId: string,
   shipmentImageId: string,
-  imageUrl: string | null
+  imageUrl: string | null,
+  env?: Env
 ): Promise<{ sent: boolean }> {
   const { data: order } = await supabase
     .from('orders')
@@ -242,12 +245,53 @@ export async function sendShipmentImageToCustomer(
   if (!order?.conversation_id) return { sent: false };
 
   const text = 'Your order has been shipped. See the shipment slip below.';
+  const bodyText = imageUrl ? text : 'Your order has been shipped.';
+
+  if (env) {
+    const result = await channelSender.sendChannelMessage({
+      supabase,
+      env,
+      conversationId: order.conversation_id,
+      payload: imageUrl
+        ? { text: bodyText, media_url: imageUrl, message_type: 'image' }
+        : { text: bodyText, message_type: 'text' },
+    });
+    const now = new Date().toISOString();
+    await supabase
+      .from('order_shipments')
+      .update({ customer_notified_at: now, updated_at: now })
+      .eq('id', shipmentId)
+      .eq('merchant_id', merchantId);
+    await supabase
+      .from('shipment_images')
+      .update({ processing_status: 'sent_to_customer', updated_at: now })
+      .eq('id', shipmentImageId)
+      .eq('merchant_id', merchantId);
+    await supabase.from('order_fulfillment_events').insert({
+      merchant_id: merchantId,
+      order_id: orderId,
+      shipment_id: shipmentId,
+      event_type: 'tracking_sent_to_customer',
+      event_note: 'Shipment image sent',
+      actor_type: 'system',
+      actor_id: null,
+    });
+    await telegram.recordTelegramOperationEvent(supabase, {
+      merchantId,
+      relatedOrderId: orderId,
+      relatedShipmentImageId: shipmentImageId,
+      eventType: 'shipment_confirmation_sent',
+      actorType: 'system',
+    });
+    return { sent: result.sent };
+  }
+
   const { error } = await supabase.from('messages').insert({
     merchant_id: merchantId,
     conversation_id: order.conversation_id,
     direction: 'outbound',
     content_type: imageUrl ? 'image' : 'text',
-    content_text: imageUrl ? text : 'Your order has been shipped.',
+    content_text: bodyText,
     content_metadata: imageUrl ? { url: imageUrl } : undefined,
   });
   if (error) return { sent: false };
