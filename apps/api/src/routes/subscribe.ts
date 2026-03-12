@@ -14,8 +14,8 @@ app.use('/*', authMiddleware)
 app.use('/*', resolveMerchant)
 app.use('/*', requireMerchantAdmin)
 
-const createCheckoutBodySchema = z.object({
-  plan_code: z.string().max(64).optional(),
+const subscribeBodySchema = z.object({
+  type: z.enum(['trial', 'monthly', 'annual']),
   success_url: z.string().url().optional(),
   cancel_url: z.string().url().optional(),
   customer_email: z.string().email().optional().nullable(),
@@ -34,20 +34,21 @@ const createCheckoutBodySchema = z.object({
 
 app.post('/', async (c) => {
   const body = await c.req.json().catch(() => ({}))
-  const parsed = createCheckoutBodySchema.safeParse(body)
+  const parsed = subscribeBodySchema.safeParse(body)
   if (!parsed.success) {
     return c.json({ error: 'Invalid request', details: parsed.error.flatten() }, 400)
   }
-  const { plan_code, success_url, cancel_url, customer_email, customer_phone, billing_address } =
+  const { type, success_url, cancel_url, customer_email, customer_phone, billing_address } =
     parsed.data
   const merchantId = c.get('merchantId')
   const supabase = getSupabaseAdmin(c.env)
   const base = c.req.url.replace(/\/subscribe\/?.*$/, '')
   const result = await createCheckout(supabase, c.env, {
     merchantId,
-    planCode: plan_code ?? 'standard',
+    planCode: 'standard',
     successUrl: success_url ?? `${base}/pricing`,
     cancelUrl: cancel_url ?? `${base}/pricing`,
+    type,
     customerEmail: customer_email ?? null,
     customerPhone: customer_phone ?? null,
     billingAddress: billing_address ?? null,
@@ -59,6 +60,7 @@ app.post('/', async (c) => {
   return c.json({
     checkout_url: result.checkoutUrl,
     payment_id: result.paymentId,
+    trial_started: result.trialStarted ?? false,
   })
 })
 

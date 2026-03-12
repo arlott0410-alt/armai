@@ -46,6 +46,7 @@ export default function MerchantSettings() {
     planCode: string
     billingStatus: string
     nextBillingAt: string | null
+    trialEndsAt: string | null
   } | null>(null)
   const [aiPrompt, setAiPrompt] = useState('')
   const [bankParserId, setBankParserId] = useState('')
@@ -78,6 +79,7 @@ export default function MerchantSettings() {
             planCode: r.subscription.planCode,
             billingStatus: r.subscription.billingStatus,
             nextBillingAt: r.subscription.nextBillingAt,
+            trialEndsAt: r.subscription.trialEndsAt ?? null,
           })
       })
       .catch(() => {})
@@ -136,8 +138,10 @@ export default function MerchantSettings() {
       {sub && (
         <PanelCard title={t('account.subscription')} subtitle={t('account.billingInfo')}>
           <p style={{ marginBottom: 8, fontSize: 14, color: theme.textSecondary }}>
-            {t('pricing.currentPlan')}: {t('plan.standard')} • {t('pricing.expiresAt')}:{' '}
-            {sub.nextBillingAt ? new Date(sub.nextBillingAt).toLocaleDateString() : '—'}
+            {t('pricing.currentPlan')}: {t('plan.standard')}
+            {sub.billingStatus === 'trialing' && sub.trialEndsAt
+              ? ` • ${t('pricing.trialDaysLeft').replace('{days}', String(Math.max(0, Math.ceil((new Date(sub.trialEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))))}`
+              : ` • ${t('pricing.expiresAt')}: ${sub.nextBillingAt ? new Date(sub.nextBillingAt).toLocaleDateString() : '—'}`}
           </p>
           <Link to="/pricing" style={{ color: theme.primary, fontSize: 14 }}>
             {t('nav.plans')}

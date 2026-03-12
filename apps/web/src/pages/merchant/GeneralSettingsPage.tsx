@@ -29,6 +29,7 @@ export default function GeneralSettingsPage() {
     planCode: string
     billingStatus: string
     nextBillingAt: string | null
+    trialEndsAt: string | null
   } | null>(null)
   const [autoSendShippingConfirmation, setAutoSendShippingConfirmation] = useState(false)
   const [telegramNotifyOrderPaid, setTelegramNotifyOrderPaid] = useState(false)
@@ -53,6 +54,7 @@ export default function GeneralSettingsPage() {
             planCode: r.subscription.planCode,
             billingStatus: r.subscription.billingStatus,
             nextBillingAt: r.subscription.nextBillingAt,
+            trialEndsAt: r.subscription.trialEndsAt ?? null,
           })
       })
       .catch(() => {})
@@ -146,10 +148,16 @@ export default function GeneralSettingsPage() {
             <div className="py-2 text-sm">
               <p className="text-[var(--armai-text)]">
                 {t('pricing.currentPlan')}: {t('plan.standard')}
+                {sub.billingStatus === 'trialing' && sub.trialEndsAt
+                  ? ` (${t('pricing.trialDaysLeft').replace('{days}', String(Math.max(0, Math.ceil((new Date(sub.trialEndsAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000)))))} ວັນ)`
+                  : ''}
               </p>
               {sub.nextBillingAt && (
                 <p className="text-[var(--armai-text-muted)] mt-1">
-                  {t('pricing.expiresAt')}: {new Date(sub.nextBillingAt).toLocaleDateString()}
+                  {sub.billingStatus === 'trialing'
+                    ? t('pricing.expiresAt') + ' (trial): '
+                    : t('pricing.expiresAt') + ': '}
+                  {new Date(sub.nextBillingAt).toLocaleDateString()}
                 </p>
               )}
             </div>

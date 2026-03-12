@@ -108,10 +108,12 @@ export const plansApi = {
   list: () => request<{ plans: PlanPublic[] }>('/plans'),
 }
 
-export interface CreateCheckoutBody {
-  plan_code: string
-  success_url: string
-  cancel_url: string
+export type SubscribeType = 'trial' | 'monthly' | 'annual'
+
+export interface SubscribeBody {
+  type: SubscribeType
+  success_url?: string
+  cancel_url?: string
   customer_email?: string | null
   customer_phone?: string | null
   billing_address?: {
@@ -124,12 +126,12 @@ export interface CreateCheckoutBody {
 }
 
 export const subscribeApi = {
-  createCheckout: (token: string, body: CreateCheckoutBody) =>
-    request<{ checkout_url: string | null; payment_id: string | null }>('/subscribe', {
-      method: 'POST',
-      token,
-      body,
-    }),
+  subscribe: (token: string, body: SubscribeBody) =>
+    request<{
+      checkout_url: string | null
+      payment_id: string | null
+      trial_started?: boolean
+    }>('/subscribe', { method: 'POST', token, body }),
 }
 
 export interface MerchantSubscription {
@@ -138,6 +140,7 @@ export interface MerchantSubscription {
   billingStatus: string
   currentPeriodEnd: string | null
   nextBillingAt: string | null
+  trialEndsAt: string | null
 }
 
 export const subscriptionApi = {
@@ -277,6 +280,7 @@ export const superApi = {
         currency: string
         status: string
         created_at: string
+        payment_type?: 'monthly' | 'annual' | null
       }[]
     }>('/super/billing/pending-payments', { token }),
   approveSubscriptionPayment: (token: string, paymentId: string) =>

@@ -21,6 +21,7 @@ export default function SuperBilling() {
       currency: string
       status: string
       created_at: string
+      payment_type?: 'monthly' | 'annual' | null
     }[]
   >([])
   const [error, setError] = useState<string | null>(null)
@@ -48,7 +49,7 @@ export default function SuperBilling() {
     setApprovingId(paymentId)
     try {
       await superApi.approveSubscriptionPayment(token, paymentId)
-      toast.success('Subscription activated, expiry +1 month')
+      toast.success('Subscription activated (expiry extended)')
       load()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Approve failed')
@@ -92,6 +93,17 @@ export default function SuperBilling() {
                       textTransform: 'uppercase',
                     }}
                   >
+                    Type
+                  </th>
+                  <th
+                    style={{
+                      padding: '12px 16px',
+                      color: theme.textMuted,
+                      fontWeight: 600,
+                      fontSize: 11,
+                      textTransform: 'uppercase',
+                    }}
+                  >
                     Amount
                   </th>
                   <th
@@ -123,6 +135,9 @@ export default function SuperBilling() {
                   <tr key={p.id} style={{ borderBottom: `1px solid ${theme.borderMuted}` }}>
                     <td style={{ padding: '12px 16px' }}>
                       {p.merchant_name ?? String(p.merchant_id).slice(0, 8)}…
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      {p.payment_type === 'annual' ? 'Annual' : 'Monthly'}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       ₭{LAK_FMT.format(p.amount)} {p.currency}
