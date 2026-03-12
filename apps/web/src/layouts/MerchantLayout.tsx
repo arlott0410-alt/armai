@@ -60,6 +60,16 @@ export default function MerchantLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const token = user?.accessToken ?? null
 
+  // Debug: help diagnose Forbidden after signup (role + merchant count)
+  if (typeof console !== 'undefined' && console.log) {
+    console.log(
+      '[MerchantLayout] user role:',
+      user?.role,
+      'merchantIds:',
+      user?.merchantIds?.length ?? 0
+    )
+  }
+
   useEffect(() => {
     const saved = localStorage.getItem('armai.locale')
     if (saved === 'lo' || saved === 'th' || saved === 'en') return

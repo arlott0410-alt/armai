@@ -76,6 +76,7 @@ app.post('/merchant', async (c) => {
     is_auto_renew: true,
   })
 
+  // Set profile role so /auth/me and merchant routes resolve correctly
   await supabase.from('profiles').upsert(
     {
       id: userId,
@@ -86,7 +87,7 @@ app.post('/merchant', async (c) => {
     { onConflict: 'id' }
   )
 
-  return c.json({ ok: true, merchantId }, 201)
+  return c.json({ ok: true, merchantId, message: 'Trial activated' }, 201)
 })
 
 export default app

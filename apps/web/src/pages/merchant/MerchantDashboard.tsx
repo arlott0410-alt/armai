@@ -61,7 +61,27 @@ export default function MerchantDashboard() {
       .catch(() => {})
   }, [token])
 
-  if (error) return <p style={{ color: theme.danger }}>{error}</p>
+  const isForbidden = error?.toLowerCase().includes('forbidden') ?? false
+  if (error) {
+    return (
+      <PageShell
+        title={t('merchant.overview.title')}
+        description={t('merchant.overview.description')}
+      >
+        <div className="rounded-lg border border-[var(--armai-border)] bg-[var(--armai-surface)] p-6 text-center">
+          <p
+            className="mb-4 font-medium text-[var(--armai-text)]"
+            style={isForbidden ? {} : { color: theme.danger }}
+          >
+            {isForbidden ? t('common.forbidden') : error}
+          </p>
+          <Link to="/pricing" className="text-[var(--armai-primary)] font-medium hover:underline">
+            {t('pricing.subscribeCta')}
+          </Link>
+        </div>
+      </PageShell>
+    )
+  }
   if (!data) return <DashboardSkeleton />
 
   const summary = data.summary

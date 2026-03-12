@@ -23,6 +23,8 @@ const AuthContext = createContext<
     signUp: (email: string, password: string) => Promise<SignUpResult>
     resendConfirmation: (email: string) => Promise<void>
     signOut: () => Promise<void>
+    /** Refetch /auth/me and update state (e.g. after onboard). */
+    refreshUser: () => Promise<void>
   }
 >(null!)
 
@@ -137,8 +139,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({ user: null, loading: false, error: null })
   }
 
+  const refreshUser = async () => {
+    const supabase = getSupabase()
+    if (!supabase) return
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    if (!session?.access_token) return
+    try {
+      const user = await fetchMe(session.access_token)
+      setState((s) => ({ ...s, user, loading: false, error: null }))
+    } catch {
+      setState((s) => ({ ...s, user: null, loading: false, error: null }))
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ ...state, signIn, signUp, resendConfirmation, signOut }}>
+    <AuthContext.Provider
+      value={{ ...state, signIn, signUp, resendConfirmation, signOut, refreshUser }}
+    >
       {children}
     </AuthContext.Provider>
   )

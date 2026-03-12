@@ -118,6 +118,7 @@ export const I18N_KEYS = [
   'trial.banner',
   'common.loading',
   'common.error',
+  'common.forbidden',
   'common.save',
   'common.cancel',
   'nav.admin',
