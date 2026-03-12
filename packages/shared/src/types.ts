@@ -73,6 +73,32 @@ export interface BankTransactionNormalized {
   raw_parser_id: string;
 }
 
+/** Normalized transaction candidate after parsing, before scoping. Includes receiver hints for account scoping. */
+export interface NormalizedTransactionCandidate {
+  amount: number;
+  currency: string | null;
+  sender_name: string | null;
+  reference_code: string | null;
+  transaction_time: string;
+  receiver_account_number: string | null;
+  receiver_account_suffix: string | null;
+  receiver_account_name: string | null;
+  receiver_bank_code: string | null;
+  parser_profile_id: string | null;
+  parse_confidence: number;
+  raw_parser_output_json: Record<string, unknown> | null;
+  /** For backward compat with matching: same as transaction_time, bank_tx_id, raw_parser_id */
+  datetime: string;
+  bank_tx_id: string | null;
+  raw_parser_id: string;
+}
+
+/** Scope outcome for a bank notification. Only 'scoped' is eligible for auto-matching. */
+export type BankScopeStatus = 'scoped' | 'ambiguous' | 'out_of_scope' | 'manual_review';
+
+/** Match mode for a bank connection: strict = require strong account evidence; relaxed = allow heuristics. */
+export type BankConnectionMatchMode = 'strict' | 'relaxed';
+
 export interface ApiErrorBody {
   error: string;
   code?: string;

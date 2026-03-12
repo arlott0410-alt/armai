@@ -257,6 +257,7 @@ export interface BankSyncSetupSummary {
   webhook_verify_token: string | null;
   is_active: boolean;
   device_label: string | null;
+  match_mode?: BankScopingMode;
   last_received_at: string | null;
   last_tested_at: string | null;
   recent_transaction_count: number;
@@ -267,7 +268,16 @@ export interface BankSyncSetupSummary {
   step2_ready?: boolean;
   step3_ready?: boolean;
   wizard_state?: BankSyncWizardState;
+  scoping_scoped_count?: number;
+  scoping_ambiguous_count?: number;
+  scoping_out_of_scope_count?: number;
 }
+
+/** Strict = require strong account evidence; relaxed = allow heuristics. */
+export type BankScopingMode = 'strict' | 'relaxed';
+
+/** Scope outcome: only 'scoped' is eligible for auto-matching. */
+export type ScopingStatus = 'scoped' | 'ambiguous' | 'out_of_scope' | 'manual_review';
 
 export interface BankSyncUpdatePayload {
   bank_code?: string;
@@ -275,6 +285,7 @@ export interface BankSyncUpdatePayload {
   device_label?: string | null;
   is_active?: boolean;
   webhook_verify_token?: string | null;
+  match_mode?: BankScopingMode;
 }
 
 export interface BankSyncTestResult {
@@ -290,6 +301,12 @@ export interface BankSyncTestResult {
   parsed_preview?: { amount: number; sender_name: string | null; reference_code: string | null } | null;
   messages?: string[];
   last_tested_at: string;
+  /** Present when test used sample_payload: parse + scoping test only, no real event. */
+  test_only?: boolean;
+  scope_status?: ScopingStatus | null;
+  scope_confidence?: number | null;
+  decision_reason?: string | null;
+  extracted_fields?: Record<string, unknown> | null;
 }
 
 export interface BankSyncTokenRegenerateResponse {
@@ -309,6 +326,53 @@ export interface BankTransactionRow {
   raw_parser_id: string | null;
   raw_payload: Record<string, unknown> | null;
   created_at: string;
+  scope_status?: ScopingStatus | null;
+  scope_confidence?: number | null;
+  ignored_reason?: string | null;
+  payment_account_id?: string | null;
+}
+
+export interface BankEventRow {
+  id: string;
+  amount: number;
+  sender_name: string | null;
+  transaction_at: string;
+  reference_code: string | null;
+  scope_status?: ScopingStatus | null;
+  scope_confidence?: number | null;
+  ignored_reason?: string | null;
+  payment_account_id?: string | null;
+  created_at: string;
+}
+
+export interface BankRawEventRow {
+  id: string;
+  processing_status: string;
+  received_at: string;
+  raw_message: string | null;
+  notification_title: string | null;
+}
+
+export interface BankProcessingLogRow {
+  id: string;
+  raw_event_id: string | null;
+  parser_profile_id: string | null;
+  payment_account_id: string | null;
+  bank_transaction_id: string | null;
+  parse_status: string | null;
+  scope_status: string | null;
+  matching_eligibility: boolean;
+  decision_reason: string | null;
+  detail_json: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface BankNotificationTestResult extends BankSyncTestResult {
+  test_only?: boolean;
+  scope_status?: ScopingStatus | null;
+  scope_confidence?: number | null;
+  decision_reason?: string | null;
+  extracted_fields?: Record<string, unknown> | null;
 }
 
 export interface MatchingResultRow {
@@ -331,8 +395,27 @@ export const bankSyncSetupApi = {
     request<{ ok: boolean }>('/merchant/bank-sync/setup', { method: 'PATCH', token, body }),
   regenerateToken: (token: string) =>
     request<BankSyncTokenRegenerateResponse>('/merchant/bank-sync/token/regenerate', { method: 'POST', token }),
-  testConnection: (token: string) =>
-    request<BankSyncTestResult>('/merchant/bank-sync/test', { method: 'POST', token }),
+  testConnection: (token: string, body?: { sample_payload?: Record<string, unknown> }) =>
+    request<BankSyncTestResult>('/merchant/bank-sync/test', { method: 'POST', token, body: body ?? {} }),
+};
+
+export interface BankSyncEventsResponse {
+  bankTransactions: BankEventRow[];
+  rawEvents: BankRawEventRow[];
+}
+
+export interface BankSyncProcessingLogsResponse {
+  processingLogs: BankProcessingLogRow[];
+}
+
+export const bankSyncEventsApi = {
+  getEvents: (token: string, limit?: number) =>
+    request<BankSyncEventsResponse>(`/merchant/bank-sync/events${limit != null ? `?limit=${limit}` : ''}`, { token }),
+};
+
+export const bankSyncProcessingLogsApi = {
+  getLogs: (token: string, limit?: number) =>
+    request<BankSyncProcessingLogsResponse>(`/merchant/bank-sync/processing-logs${limit != null ? `?limit=${limit}` : ''}`, { token }),
 };
 
 /** Typed bank sync wizard API (aliases for clarity). */

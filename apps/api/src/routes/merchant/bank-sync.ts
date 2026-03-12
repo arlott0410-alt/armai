@@ -9,6 +9,12 @@ import {
   getBankOption,
 } from '../../lib/bank-codes.js';
 import { parseBankPayload } from '../../services/bank-webhook.js';
+import { resolveParserProfile } from '../../services/parser-resolver.js';
+import {
+  runAccountScoping,
+  loadPaymentAccountForScoping,
+} from '../../services/account-scoping.js';
+import type { NormalizedTransactionCandidate } from '@armai/shared';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const app = new Hono<{
@@ -41,11 +47,11 @@ app.get('/setup', async (c) => {
   const supabase = getSupabaseAdmin(c.env);
   const merchantId = c.get('merchantId');
 
-  const [settingsRow, configRow, paymentAccounts, lastTx, countResult] = await Promise.all([
+  const [settingsRow, configRow, paymentAccounts, lastTx, countResult, scopeCounts] = await Promise.all([
     supabase.from('merchant_settings').select('bank_parser_id, webhook_verify_token').eq('merchant_id', merchantId).single(),
     supabase
       .from('bank_configs')
-      .select('id, bank_code, payment_account_id, device_label, is_active, last_tested_at, parser_id')
+      .select('id, bank_code, payment_account_id, device_label, is_active, last_tested_at, parser_id, match_mode')
       .eq('merchant_id', merchantId)
       .order('updated_at', { ascending: false })
       .limit(1)
@@ -63,6 +69,7 @@ app.get('/setup', async (c) => {
       .limit(1)
       .maybeSingle(),
     supabase.from('bank_transactions').select('id', { count: 'exact', head: true }).eq('merchant_id', merchantId),
+    supabase.from('bank_transactions').select('scope_status').eq('merchant_id', merchantId),
   ]);
 
   const settings = settingsRow.data;
@@ -72,6 +79,10 @@ app.get('/setup', async (c) => {
   const linkedAccount = linkedAccountId ? accounts.find((a) => a.id === linkedAccountId) : null;
   const lastReceivedAt = lastTx.data?.[0]?.transaction_at ?? null;
   const recentTransactionCount = countResult.count ?? 0;
+  const scopeRows = scopeCounts.data ?? [];
+  const scopedCount = scopeRows.filter((r: { scope_status: string | null }) => r.scope_status === 'scoped').length;
+  const ambiguousCount = scopeRows.filter((r: { scope_status: string | null }) => r.scope_status === 'ambiguous').length;
+  const outOfScopeCount = scopeRows.filter((r: { scope_status: string | null }) => r.scope_status === 'out_of_scope').length;
 
   const parserId = settings?.bank_parser_id ?? config?.parser_id ?? null;
   const bankCode = config?.bank_code ?? null;
@@ -129,6 +140,7 @@ app.get('/setup', async (c) => {
     webhook_verify_token: settings?.webhook_verify_token ?? null,
     is_active: isActive,
     device_label: config?.device_label ?? null,
+    match_mode: config?.match_mode ?? 'strict',
     last_received_at: lastReceivedAt,
     last_tested_at: config?.last_tested_at ?? null,
     recent_transaction_count: recentTransactionCount,
@@ -139,6 +151,9 @@ app.get('/setup', async (c) => {
     step2_ready: step2Ready,
     step3_ready: step3Ready,
     wizard_state: wizardState,
+    scoping_scoped_count: scopedCount,
+    scoping_ambiguous_count: ambiguousCount,
+    scoping_out_of_scope_count: outOfScopeCount,
   });
 });
 
@@ -170,6 +185,7 @@ app.patch('/setup', async (c) => {
   const deviceLabel = body.device_label as string | null | undefined;
   const isActive = body.is_active as boolean | undefined;
   const webhookVerifyToken = body.webhook_verify_token as string | null | undefined;
+  const matchMode = body.match_mode as 'strict' | 'relaxed' | undefined;
 
   const parserId = bankCode !== undefined ? getParserIdForBankCode(bankCode) : undefined;
 
@@ -186,6 +202,7 @@ app.patch('/setup', async (c) => {
   if (deviceLabel !== undefined) configUpdate.device_label = deviceLabel?.trim() || null;
   if (isActive !== undefined) configUpdate.is_active = isActive;
   if (parserId !== undefined) configUpdate.parser_id = parserId;
+  if (matchMode !== undefined) configUpdate.match_mode = matchMode;
 
   if (existingConfig?.id) {
     const { error } = await supabase.from('bank_configs').update(configUpdate).eq('id', existingConfig.id).eq('merchant_id', merchantId);
@@ -200,6 +217,7 @@ app.patch('/setup', async (c) => {
       payment_account_id: configUpdate.payment_account_id ?? null,
       device_label: configUpdate.device_label ?? null,
       last_tested_at: null,
+      match_mode: (configUpdate.match_mode as string) ?? 'strict',
     });
     if (error) return c.json({ error: error.message }, 400);
   }
@@ -216,6 +234,43 @@ app.patch('/setup', async (c) => {
   }
 
   return c.json({ ok: true });
+});
+
+/** GET /merchant/bank-sync/events — recent raw/processed bank events with scope status. */
+app.get('/events', async (c) => {
+  const supabase = getSupabaseAdmin(c.env);
+  const merchantId = c.get('merchantId');
+  const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10), 100);
+  const { data: transactions } = await supabase
+    .from('bank_transactions')
+    .select('id, amount, sender_name, transaction_at, reference_code, scope_status, scope_confidence, ignored_reason, payment_account_id, created_at')
+    .eq('merchant_id', merchantId)
+    .order('transaction_at', { ascending: false })
+    .limit(limit);
+  const { data: rawEvents } = await supabase
+    .from('bank_raw_notification_events')
+    .select('id, processing_status, received_at, raw_message, notification_title')
+    .eq('merchant_id', merchantId)
+    .order('received_at', { ascending: false })
+    .limit(limit);
+  return c.json({
+    bankTransactions: transactions ?? [],
+    rawEvents: rawEvents ?? [],
+  });
+});
+
+/** GET /merchant/bank-sync/processing-logs — decision log for debugging. */
+app.get('/processing-logs', async (c) => {
+  const supabase = getSupabaseAdmin(c.env);
+  const merchantId = c.get('merchantId');
+  const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10), 100);
+  const { data: logs } = await supabase
+    .from('bank_transaction_processing_logs')
+    .select('id, raw_event_id, parser_profile_id, payment_account_id, bank_transaction_id, parse_status, scope_status, matching_eligibility, decision_reason, detail_json, created_at')
+    .eq('merchant_id', merchantId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  return c.json({ processingLogs: logs ?? [] });
 });
 
 /** POST /merchant/bank-sync/token/regenerate — generate new webhook verification token. */
@@ -235,20 +290,24 @@ app.post('/token/regenerate', async (c) => {
   return c.json({ ok: true, webhook_verify_token: newToken });
 });
 
-/** POST /merchant/bank-sync/test — test connection / parser config without real webhook. */
+/** POST /merchant/bank-sync/test — test connection / parser config; optional sample payload for parse + scoping test. */
 app.post('/test', async (c) => {
   const supabase = getSupabaseAdmin(c.env);
   const merchantId = c.get('merchantId');
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const samplePayload = body.sample_payload as Record<string, unknown> | undefined;
+  const useScopingTest = samplePayload != null && typeof samplePayload === 'object';
 
   const [settingsRow, configRow] = await Promise.all([
     supabase.from('merchant_settings').select('bank_parser_id').eq('merchant_id', merchantId).single(),
-    supabase.from('bank_configs').select('id, parser_id, payment_account_id, bank_code').eq('merchant_id', merchantId).limit(1).maybeSingle(),
+    supabase.from('bank_configs').select('id, parser_id, payment_account_id, bank_code, match_mode').eq('merchant_id', merchantId).limit(1).maybeSingle(),
   ]);
 
   const parserId = settingsRow.data?.bank_parser_id ?? configRow.data?.parser_id ?? getParserIdForBankCode('GENERIC');
   const bankCode = configRow.data?.bank_code ?? 'GENERIC';
   const hasPaymentAccount = !!configRow.data?.payment_account_id;
   const hasToken = await hasWebhookToken(supabase, merchantId);
+  const matchMode = (configRow.data?.match_mode as 'strict' | 'relaxed') ?? 'strict';
 
   const messages: string[] = [];
   const result: {
@@ -264,6 +323,11 @@ app.post('/test', async (c) => {
     parsed_preview: { amount: number; sender_name: string | null; reference_code: string | null } | null;
     messages: string[];
     last_tested_at: string;
+    test_only?: boolean;
+    scope_status?: string | null;
+    scope_confidence?: number | null;
+    decision_reason?: string | null;
+    extracted_fields?: Record<string, unknown> | null;
   } = {
     success: false,
     status: 'ok',
@@ -298,7 +362,7 @@ app.post('/test', async (c) => {
     result.messages.push(`"${opt.label}" uses generic parser.`);
   }
 
-  if (!hasToken) {
+  if (!hasToken && !useScopingTest) {
     result.status = 'missing_token';
     result.message = 'Webhook verification token is not set. Generate or enter a token.';
     result.token_status = 'missing';
@@ -314,15 +378,16 @@ app.post('/test', async (c) => {
     result.messages.push('Payment account linked.');
   }
 
+  const payloadToParse = useScopingTest ? samplePayload : {
+    amount: 100.5,
+    sender_name: 'Test Sender',
+    datetime: new Date().toISOString(),
+    reference_code: 'TEST-REF',
+    transaction_id: 'test-' + Date.now(),
+  };
+
   try {
-    const samplePayload = {
-      amount: 100.5,
-      sender_name: 'Test Sender',
-      datetime: new Date().toISOString(),
-      reference_code: 'TEST-REF',
-      transaction_id: 'test-' + Date.now(),
-    };
-    const normalized = parseBankPayload(parserId, samplePayload);
+    const normalized = parseBankPayload(parserId, payloadToParse);
     result.parser_ready = true;
     result.test_parse_status = 'ok';
     result.parsed_preview = {
@@ -330,11 +395,61 @@ app.post('/test', async (c) => {
       sender_name: normalized.sender_name,
       reference_code: normalized.reference_code,
     };
+    result.extracted_fields = {
+      amount: normalized.amount,
+      sender_name: normalized.sender_name,
+      reference_code: normalized.reference_code,
+      datetime: normalized.datetime,
+      bank_tx_id: normalized.bank_tx_id,
+    };
+
+    if (useScopingTest) {
+      result.test_only = true;
+      const resolution = await resolveParserProfile(supabase, { merchantId, bankCode });
+      const candidate: NormalizedTransactionCandidate = {
+        amount: normalized.amount,
+        currency: null,
+        sender_name: normalized.sender_name,
+        reference_code: normalized.reference_code,
+        transaction_time: normalized.datetime,
+        receiver_account_number: (samplePayload?.receiver_account_number as string) ?? null,
+        receiver_account_suffix: (samplePayload?.receiver_account_suffix as string) ?? null,
+        receiver_account_name: (samplePayload?.receiver_account_name as string) ?? null,
+        receiver_bank_code: (samplePayload?.receiver_bank_code as string) ?? null,
+        parser_profile_id: resolution.parserProfileId,
+        parse_confidence: 1,
+        raw_parser_output_json: null,
+        datetime: normalized.datetime,
+        bank_tx_id: normalized.bank_tx_id,
+        raw_parser_id: normalized.raw_parser_id,
+      };
+      const paymentAccountId = configRow.data?.payment_account_id ?? null;
+      let paymentAccount = null;
+      if (paymentAccountId) {
+        paymentAccount = await loadPaymentAccountForScoping(supabase, paymentAccountId, merchantId);
+      }
+      const scoping = runAccountScoping({
+        merchantId,
+        candidate,
+        linkedPaymentAccountId: paymentAccountId,
+        matchMode,
+        paymentAccount,
+      });
+      result.scope_status = scoping.scopeStatus;
+      result.scope_confidence = scoping.scopeConfidence;
+      result.decision_reason = scoping.decisionReason;
+      result.messages.push(`Scoping: ${scoping.scopeStatus}. ${scoping.decisionReason}`);
+    }
+
     result.success = true;
     result.status = 'ok';
-    result.message = 'Configuration valid. Parser test passed (sample payload). Update your Android app with the webhook URL and token.';
-    result.messages.push('Parser test passed with sample payload.');
-    result.messages.push('Connection is ready. Use the webhook URL and token in your Android app.');
+    result.message = useScopingTest
+      ? 'Parse and scoping test completed (test only — no real event).'
+      : 'Configuration valid. Parser test passed (sample payload). Update your Android app with the webhook URL and token.';
+    if (!useScopingTest) {
+      result.messages.push('Parser test passed with sample payload.');
+      result.messages.push('Connection is ready. Use the webhook URL and token in your Android app.');
+    }
   } catch (e) {
     result.status = 'parse_failed';
     result.message = e instanceof Error ? e.message : 'Parser test failed.';
@@ -383,6 +498,7 @@ async function updateLastTested(supabase: SupabaseClient, merchantId: string): P
       is_active: true,
       bank_code: 'GENERIC',
       last_tested_at: now,
+      match_mode: 'strict',
     });
   }
 }

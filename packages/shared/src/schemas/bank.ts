@@ -17,3 +17,22 @@ export const normalizedTransactionSchema = z.object({
 });
 
 export type NormalizedTransaction = z.infer<typeof normalizedTransactionSchema>;
+
+/** Normalized candidate after parsing (receiver fields for scoping). */
+export const normalizedTransactionCandidateSchema = z.object({
+  amount: z.number().positive(),
+  currency: z.string().nullable().optional(),
+  sender_name: z.string().nullable(),
+  reference_code: z.string().nullable(),
+  transaction_time: z.string(),
+  receiver_account_number: z.string().nullable().optional(),
+  receiver_account_suffix: z.string().nullable().optional(),
+  receiver_account_name: z.string().nullable().optional(),
+  receiver_bank_code: z.string().nullable().optional(),
+  parser_profile_id: z.string().uuid().nullable().optional(),
+  parse_confidence: z.number().min(0).max(1).optional(),
+  raw_parser_output_json: z.record(z.unknown()).nullable().optional(),
+  datetime: z.string(),
+  bank_tx_id: z.string().nullable().optional(),
+  raw_parser_id: z.string(),
+});

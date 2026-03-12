@@ -1,8 +1,7 @@
 import { Hono } from 'hono';
 import type { Env } from '../../env.js';
 import { getSupabaseAdmin } from '../../lib/supabase.js';
-import { parseBankPayload, ingestBankTransaction } from '../../services/bank-webhook.js';
-import { runMatchingForBankTransaction } from '../../services/matching.js';
+import { processBankNotification } from '../../services/bank-notification-pipeline.js';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -13,40 +12,25 @@ app.post('/:merchantId', async (c) => {
     return c.json({ error: 'Invalid JSON' }, 400);
   }
   const supabase = getSupabaseAdmin(c.env);
-  const { data: settings } = await supabase
-    .from('merchant_settings')
-    .select('bank_parser_id')
-    .eq('merchant_id', merchantId)
-    .single();
-  const parserId = settings?.bank_parser_id ?? '00000000-0000-4000-8000-000000000001';
-  let normalized;
-  try {
-    normalized = parseBankPayload(parserId, body);
-  } catch (e) {
-    return c.json({ error: e instanceof Error ? e.message : 'Parse failed' }, 400);
+  const rawMeta = {
+    source_app_package: (body as Record<string, unknown>).source_app_package as string | undefined,
+    source_app_label: (body as Record<string, unknown>).source_app_label as string | undefined,
+    device_id: (body as Record<string, unknown>).device_id as string | undefined,
+    device_label: (body as Record<string, unknown>).device_label as string | undefined,
+    notification_title: (body as Record<string, unknown>).notification_title as string | undefined,
+    notification_subtitle: (body as Record<string, unknown>).notification_subtitle as string | undefined,
+    raw_message: (body as Record<string, unknown>).raw_message as string | undefined,
+    locale: (body as Record<string, unknown>).locale as string | undefined,
+  };
+  const result = await processBankNotification(supabase, {
+    merchantId,
+    body: body as Record<string, unknown>,
+    rawEventMeta: rawMeta,
+  });
+  if (!result.ok) {
+    return c.json({ error: result.error ?? 'Processing failed' }, 400);
   }
-  const { data: bankConfig } = await supabase
-    .from('bank_configs')
-    .select('id')
-    .eq('merchant_id', merchantId)
-    .eq('is_active', true)
-    .limit(1)
-    .single();
-  const bankTxId = await ingestBankTransaction(supabase, {
-    merchantId,
-    bankConfigId: bankConfig?.id ?? null,
-    normalized,
-    rawPayload: body,
-  });
-  await runMatchingForBankTransaction(supabase, {
-    merchantId,
-    bankTransactionId: bankTxId,
-    amount: normalized.amount,
-    senderName: normalized.sender_name,
-    datetime: normalized.datetime,
-    referenceCode: normalized.reference_code,
-  });
-  return c.json({ ok: true, bankTransactionId: bankTxId });
+  return c.json({ ok: true, bankTransactionId: result.bankTransactionId ?? undefined });
 });
 
 export default app;

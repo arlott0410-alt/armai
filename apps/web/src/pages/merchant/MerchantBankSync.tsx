@@ -8,6 +8,8 @@ import type {
   BankTransactionRow,
   MatchingResultRow,
   PaymentAccountRow,
+  BankScopingMode,
+  ScopingStatus,
 } from '../../lib/api';
 import type { BankSyncTestResult } from '../../lib/api';
 import {
@@ -56,6 +58,9 @@ export default function MerchantBankSync() {
   const [regenerating, setRegenerating] = useState(false);
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [samplePayloadText, setSamplePayloadText] = useState('');
+  const [parseTestResult, setParseTestResult] = useState<BankSyncTestResult | null>(null);
+  const [parseTesting, setParseTesting] = useState(false);
 
   const load = () => {
     if (!token) return;
@@ -281,6 +286,29 @@ export default function MerchantBankSync() {
                     }}
                   />
                 </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 500, color: theme.textSecondary }}>
+                    Match mode
+                  </label>
+                  <select
+                    value={summary?.match_mode ?? 'strict'}
+                    onChange={(e) => handleSave({ match_mode: e.target.value as BankScopingMode })}
+                    style={{
+                      width: '100%',
+                      maxWidth: 360,
+                      padding: '10px 12px',
+                      background: theme.surfaceElevated,
+                      border: `1px solid ${theme.borderMuted}`,
+                      borderRadius: 6,
+                      color: theme.text,
+                      fontSize: 13,
+                    }}
+                  >
+                    <option value="strict">Strict — require account/suffix match</option>
+                    <option value="relaxed">Relaxed — allow device + name hints</option>
+                  </select>
+                  <p style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>Strict is recommended for multiple accounts in one app (e.g. BCEL One).</p>
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <input
                     type="checkbox"
@@ -492,6 +520,108 @@ export default function MerchantBankSync() {
           )}
         </WizardStepCard>
 
+        {/* Test parser & scoping — paste sample notification payload */}
+        <Section
+          title="Test parser & scoping"
+          description="Paste a sample notification payload (JSON) to see extracted fields and scoping result. Test only — no real event is sent."
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <textarea
+              placeholder='{"amount": 100, "sender_name": "John", "datetime": "2025-03-12T10:00:00Z", "reference_code": "REF-1"}'
+              value={samplePayloadText}
+              onChange={(e) => setSamplePayloadText(e.target.value)}
+              rows={4}
+              style={{
+                width: '100%',
+                maxWidth: 560,
+                padding: 10,
+                background: theme.surfaceElevated,
+                border: `1px solid ${theme.borderMuted}`,
+                borderRadius: 6,
+                color: theme.text,
+                fontSize: 12,
+                fontFamily: 'monospace',
+              }}
+            />
+            <button
+              type="button"
+              disabled={parseTesting}
+              onClick={async () => {
+                if (!token) return;
+                setParseTesting(true);
+                setParseTestResult(null);
+                try {
+                  let body: { sample_payload?: Record<string, unknown> } = {};
+                  if (samplePayloadText.trim()) {
+                    try {
+                      body.sample_payload = JSON.parse(samplePayloadText.trim()) as Record<string, unknown>;
+                    } catch {
+                      setParseTestResult({
+                        success: false,
+                        status: 'parse_failed',
+                        message: 'Invalid JSON',
+                        parser_ready: false,
+                        last_tested_at: new Date().toISOString(),
+                      });
+                      return;
+                    }
+                  }
+                  const res = await bankSyncSetupApi.testConnection(token, body);
+                  setParseTestResult(res);
+                } catch (e) {
+                  setParseTestResult({
+                    success: false,
+                    status: 'parse_failed',
+                    message: e instanceof Error ? e.message : 'Test failed',
+                    parser_ready: false,
+                    last_tested_at: new Date().toISOString(),
+                  });
+                } finally {
+                  setParseTesting(false);
+                }
+              }}
+              style={{
+                padding: '10px 20px',
+                background: theme.primary,
+                color: theme.background,
+                border: 0,
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: parseTesting ? 'not-allowed' : 'pointer',
+                alignSelf: 'flex-start',
+              }}
+            >
+              {parseTesting ? 'Running test…' : 'Run parse & scoping test'}
+            </button>
+            {parseTestResult?.test_only && (
+              <div
+                style={{
+                  padding: 14,
+                  background: theme.surfaceElevated,
+                  border: `1px solid ${theme.borderMuted}`,
+                  borderRadius: 8,
+                  fontSize: 13,
+                }}
+              >
+                <div style={{ marginBottom: 8, fontWeight: 600, color: theme.text }}>Test result (test only)</div>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+                  <span>Scope: <strong style={{ color: parseTestResult.scope_status === 'scoped' ? theme.success : parseTestResult.scope_status === 'out_of_scope' ? theme.textMuted : theme.warning }}>{parseTestResult.scope_status ?? '—'}</strong></span>
+                  {parseTestResult.scope_confidence != null && <span>Confidence: {parseTestResult.scope_confidence}</span>}
+                </div>
+                {parseTestResult.decision_reason && (
+                  <div style={{ color: theme.textSecondary, marginBottom: 8 }}>{parseTestResult.decision_reason}</div>
+                )}
+                {parseTestResult.extracted_fields && Object.keys(parseTestResult.extracted_fields).length > 0 && (
+                  <div style={{ fontSize: 12, color: theme.textMuted }}>
+                    Extracted: {JSON.stringify(parseTestResult.extracted_fields)}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </Section>
+
         {/* Monitoring: Recent transactions */}
         <Section title="Recent transactions" description="Incoming bank transactions from your connected device">
           {bankTransactions.length === 0 ? (
@@ -508,6 +638,7 @@ export default function MerchantBankSync() {
                     <th style={{ padding: 12, textAlign: 'left', color: theme.textSecondary, fontWeight: 600 }}>Sender</th>
                     <th style={{ padding: 12, textAlign: 'left', color: theme.textSecondary, fontWeight: 600 }}>Time</th>
                     <th style={{ padding: 12, textAlign: 'left', color: theme.textSecondary, fontWeight: 600 }}>Reference</th>
+                    <th style={{ padding: 12, textAlign: 'left', color: theme.textSecondary, fontWeight: 600 }}>Scope</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -517,6 +648,21 @@ export default function MerchantBankSync() {
                       <td style={{ padding: 12, color: theme.text }}>{tx.sender_name ?? '—'}</td>
                       <td style={{ padding: 12, color: theme.textSecondary }}>{formatDate(tx.transaction_at)}</td>
                       <td style={{ padding: 12, color: theme.textSecondary }}>{tx.reference_code ?? '—'}</td>
+                      <td style={{ padding: 12 }}>
+                        {tx.scope_status != null ? (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              background: tx.scope_status === 'scoped' ? theme.successMuted : tx.scope_status === 'out_of_scope' ? theme.dangerMuted : theme.warningMuted,
+                              color: tx.scope_status === 'scoped' ? theme.success : tx.scope_status === 'out_of_scope' ? theme.danger : theme.warning,
+                            }}
+                          >
+                            {(tx.scope_status as ScopingStatus) ?? '—'}
+                          </span>
+                        ) : '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

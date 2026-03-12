@@ -20,20 +20,26 @@ export function IntegrationOverviewCard({
 }) {
   if (!summary) return null;
 
+  const matchModeLabel = summary.match_mode === 'relaxed' ? 'Relaxed' : 'Strict';
   const rows: { label: string; value: React.ReactNode }[] = [
     { label: 'Bank', value: summary.bank_label || 'Not selected' },
     { label: 'Parser', value: summary.parser_label },
     {
-      label: 'Payment account',
+      label: 'Linked account',
       value: summary.payment_account_summary
         ? `${summary.payment_account_summary.account_number_masked} ${summary.payment_account_summary.is_primary ? '(Primary)' : ''}`
         : '—',
     },
+    { label: 'Match mode', value: matchModeLabel },
     { label: 'Connection', value: summary.is_active ? 'Active' : 'Inactive' },
     { label: 'Token', value: summary.token_set ? 'Set' : 'Not set' },
     { label: 'Last transaction', value: formatDate(summary.last_received_at) },
     { label: 'Last test', value: formatDate(summary.last_tested_at) },
   ];
+  const scoped = summary.scoping_scoped_count ?? 0;
+  const ambiguous = summary.scoping_ambiguous_count ?? 0;
+  const outOfScope = summary.scoping_out_of_scope_count ?? 0;
+  const hasScoping = scoped + ambiguous + outOfScope > 0;
 
   return (
     <div
@@ -69,6 +75,23 @@ export function IntegrationOverviewCard({
           </div>
         ))}
       </div>
+      {hasScoping && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderTop: `1px solid ${theme.borderMuted}`,
+            display: 'flex',
+            gap: 16,
+            flexWrap: 'wrap',
+            fontSize: 12,
+            color: theme.textSecondary,
+          }}
+        >
+          <span><strong style={{ color: theme.success }}>{scoped}</strong> scoped</span>
+          <span><strong style={{ color: theme.warning }}>{ambiguous}</strong> ambiguous</span>
+          <span><strong style={{ color: theme.textMuted }}>{outOfScope}</strong> out of scope</span>
+        </div>
+      )}
     </div>
   );
 }
