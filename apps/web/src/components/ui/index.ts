@@ -21,3 +21,5 @@ export { IntegrationOverviewCard } from './IntegrationOverviewCard';
 export { InlineInstructionList } from './InlineInstructionList';
 export { ActionFooter } from './ActionFooter';
 export { FulfillmentStatusBadge } from './FulfillmentStatusBadge';
+export { FormSection, FieldHint } from './FormSection';
+export { DataTableShell } from './DataTableShell';

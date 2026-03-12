@@ -38,12 +38,13 @@ app.use('/*', requireMerchantAdmin);
 app.get('/dashboard', async (c) => {
   const supabase = getSupabaseAdmin(c.env);
   const merchantId = c.get('merchantId');
-  const [summary, readiness, settings] = await Promise.all([
+  const [summary, readiness, settings, merchant] = await Promise.all([
     merchantDashboard.getMerchantDashboardSummary(supabase, merchantId),
     merchantDashboard.getMerchantReadiness(supabase, merchantId),
     merchantService.getMerchantSettings(supabase, merchantId),
+    merchantService.getMerchantById(supabase, merchantId),
   ]);
-  return c.json({ merchantId, settings, summary, readiness });
+  return c.json({ merchantId, merchant, settings, summary, readiness });
 });
 
 app.get('/readiness', async (c) => {

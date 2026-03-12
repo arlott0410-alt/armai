@@ -1,6 +1,6 @@
 /**
- * ArmAI premium enterprise theme: Luxury AI platform — Black + Gold
- * Background: #0B0B0B | Surfaces: #121212 | Primary gold: #D4AF37 | Highlight gold: #F5D67A
+ * ArmAI enterprise theme: premium super-admin; clear, readable merchant operations.
+ * Design tokens for spacing and typography keep UI consistent.
  */
 
 export const theme = {
@@ -27,6 +27,25 @@ export const theme = {
   dangerMuted: 'rgba(239, 68, 68, 0.2)',
   info: '#3b82f6',
   infoMuted: 'rgba(59, 130, 246, 0.2)',
+} as const;
+
+/** Spacing scale (px). Use for padding, gaps, margins. */
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
+} as const;
+
+/** Typography: font size and weight for hierarchy. */
+export const typography = {
+  pageTitle: { fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em' as const },
+  sectionTitle: { fontSize: 15, fontWeight: 600, letterSpacing: '0.02em' as const },
+  body: { fontSize: 14 },
+  bodySmall: { fontSize: 13 },
+  caption: { fontSize: 12 },
 } as const;
 
 export type Theme = typeof theme;

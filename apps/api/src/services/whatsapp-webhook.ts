@@ -109,7 +109,7 @@ export async function ingestWhatsAppMessage(
     });
     let linkedCustomerId: string | null = merchantCustomerId;
     if (!linkedCustomerId) {
-      const norm = customerIdentity.normalizePhone(from);
+      const norm = await customerIdentity.normalizePhoneForMerchant(supabase, p.merchantId, from);
       if (norm) {
         const autoLinked = await customerIdentity.tryAutoLinkByPhone(supabase, {
           merchantId: p.merchantId,

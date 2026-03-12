@@ -12,6 +12,7 @@ binding = "SLIP_BUCKET"
 bucket_name = "armai-slips"
 
 # Channel media (WhatsApp/Facebook images, documents)
+# Create bucket "armai-channel-media" in Dashboard → R2 if it does not exist
 [[r2_buckets]]
 binding = "CHANNEL_MEDIA_BUCKET"
 bucket_name = "armai-channel-media"

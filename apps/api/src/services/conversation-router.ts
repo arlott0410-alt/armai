@@ -47,7 +47,7 @@ export interface RouteResult {
   templateHint?: string;
 }
 
-const GREETING_PATTERNS = /^(hi|hello|hey|sawasdee|สวัสดี|ดีครับ|ดีค่ะ|ดีคะ|good morning|good afternoon|good evening|สับ|ฮัลโล)[\s!.]*$/i;
+const GREETING_PATTERNS = /^(hi|hello|hey|sawasdee|sabaidee|สวัสดี|ສະບາຍດີ|ສະບາຍ|ดีครับ|ดีค่ะ|ดีคะ|good morning|good afternoon|good evening|สับ|ฮัลโล)[\s!.]*$/i;
 const SMALL_TALK = /^(ok|okay|thanks|thank you|ขอขอบคุณ|ได้ครับ|ครับ|ค่ะ|cool|got it|เข้าใจ)[\s!.]*$/i;
 const SHIPPING_QUESTIONS = /ship|shipped|tracking|delivery|deliver|ส่งของ|เลขพัสดุ|ติดตาม|จัดส่ง/i;
 const PAYMENT_SLIP = /slip|transfer|โอน|สลิป|proof|proof of payment|หลักฐานการโอน/i;

@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { channelTypeSchema } from './channel.js';
 
 export const merchantCustomerStatusSchema = z.enum(['active', 'archived', 'blocked']);
 export type MerchantCustomerStatus = z.infer<typeof merchantCustomerStatusSchema>;

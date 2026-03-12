@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CreateProductCategoryBody, CreateProductBody, CreateProductVariantBody, CreateProductKeywordBody } from '@armai/shared';
+import { getMerchantDefaultCurrency, FALLBACK_CURRENCY } from '@armai/shared';
+import * as merchantService from './merchant.js';
 import * as contextCache from './ai-context-cache.js';
 
 export async function listCategories(supabase: SupabaseClient, merchantId: string, activeOnly = true) {
@@ -65,6 +67,11 @@ export async function getProduct(supabase: SupabaseClient, merchantId: string, p
 }
 
 export async function createProduct(supabase: SupabaseClient, merchantId: string, body: CreateProductBody) {
+  const merchant = await merchantService.getMerchantById(supabase, merchantId).catch(() => null);
+  const defaultCurrency = merchant
+    ? getMerchantDefaultCurrency(merchant.default_currency, merchant.default_country)
+    : FALLBACK_CURRENCY;
+  const currency = body.currency ?? defaultCurrency;
   const { data, error } = await supabase
     .from('products')
     .insert({
@@ -75,7 +82,7 @@ export async function createProduct(supabase: SupabaseClient, merchantId: string
       description: body.description ?? null,
       base_price: body.base_price,
       sale_price: body.sale_price ?? null,
-      currency: body.currency ?? 'THB',
+      currency,
       sku: body.sku ?? null,
       status: body.status ?? 'active',
       requires_manual_confirmation: body.requires_manual_confirmation ?? false,

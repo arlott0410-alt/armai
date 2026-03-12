@@ -93,7 +93,7 @@ export const superApi = {
   merchant: (token: string, id: string) => request<SuperMerchantDetailResponse>(`/super/merchants/${id}`, { token }),
   updateMerchant: (token: string, id: string, body: { billing_status?: string; plan_code?: string; monthly_price_usd?: number; next_billing_at?: string | null; trial_ends_at?: string | null; notes?: string | null }) =>
     request<{ ok: boolean }>(`/super/merchants/${id}`, { method: 'PATCH', token, body }),
-  createMerchant: (token: string, body: { name: string; slug: string; admin_email: string; admin_password: string; admin_full_name?: string }) =>
+  createMerchant: (token: string, body: { name: string; slug: string; admin_email: string; admin_password: string; admin_full_name?: string; default_country?: string; default_currency?: string }) =>
     request<{ merchantId: string; userId: string }>('/super/merchants', { method: 'POST', token, body }),
   merchantBilling: (token: string, merchantId: string) => request<{ events: unknown[] }>(`/super/merchants/${merchantId}/billing`, { token }),
   createBillingEvent: (token: string, merchantId: string, body: { event_type: string; amount: number; currency?: string; due_at?: string | null; paid_at?: string | null; status?: string; reference_note?: string }) =>
@@ -148,8 +148,20 @@ export interface ReadinessItem {
   detail?: string;
 }
 
+export interface MerchantDashboardMerchant {
+  id: string;
+  name: string;
+  slug: string;
+  billing_status: string;
+  default_country?: string | null;
+  default_currency?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MerchantDashboardResponse {
   merchantId: string;
+  merchant?: MerchantDashboardMerchant | null;
   settings: Record<string, unknown> | null;
   summary?: MerchantDashboardSummary;
   readiness?: ReadinessItem[];

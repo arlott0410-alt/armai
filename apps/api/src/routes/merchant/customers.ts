@@ -125,7 +125,7 @@ app.patch('/:id', async (c) => {
   if (parsed.data.primary_display_name !== undefined) update.primary_display_name = parsed.data.primary_display_name;
   if (parsed.data.phone_number !== undefined) {
     update.phone_number = parsed.data.phone_number;
-    update.normalized_phone = customerIdentity.normalizePhone(parsed.data.phone_number);
+    update.normalized_phone = await customerIdentity.normalizePhoneForMerchant(supabase, merchantId, parsed.data.phone_number);
   }
   if (parsed.data.notes !== undefined) update.notes = parsed.data.notes;
   if (parsed.data.status !== undefined) update.status = parsed.data.status;

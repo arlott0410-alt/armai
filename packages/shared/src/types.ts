@@ -36,6 +36,10 @@ export interface Merchant {
   name: string;
   slug: string;
   billing_status: 'active' | 'past_due' | 'trialing' | 'cancelled';
+  /** ISO 3166-1 alpha-2 (e.g. LA, TH). Used for phone normalization and default currency. */
+  default_country?: string | null;
+  /** ISO 4217 (e.g. LAK, THB). Overrides country-derived default when set. */
+  default_currency?: string | null;
   created_at: string;
   updated_at: string;
 }

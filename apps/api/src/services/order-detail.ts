@@ -3,7 +3,7 @@ import * as orderService from './orders.js';
 import * as orderDraft from './order-draft.js';
 import * as codSettings from './cod-settings.js';
 import * as paymentMethodSwitch from './payment-method-switch.js';
-import { PAYMENT_METHOD, PAYMENT_STATUS } from '@armai/shared';
+import { PAYMENT_METHOD, PAYMENT_STATUS, FALLBACK_CURRENCY } from '@armai/shared';
 
 export async function getOrderDetail(supabase: SupabaseClient, merchantId: string, orderId: string) {
   const order = await orderService.getOrder(supabase, merchantId, orderId);
@@ -113,6 +113,13 @@ export async function switchOrderToPrepaid(
   method: 'prepaid_bank_transfer' | 'prepaid_qr'
 ) {
   const now = new Date().toISOString();
+  const { data: account } = await supabase
+    .from('merchant_payment_accounts')
+    .select('currency')
+    .eq('id', paymentAccountId)
+    .eq('merchant_id', merchantId)
+    .single();
+  const expectedCurrency = account?.currency ?? FALLBACK_CURRENCY;
   const { data: codRows } = await supabase
     .from('order_cod_details')
     .select('id')
@@ -130,7 +137,7 @@ export async function switchOrderToPrepaid(
     order_id: orderId,
     payment_account_id: paymentAccountId,
     expected_amount: expectedAmount,
-    expected_currency: 'THB',
+    expected_currency: expectedCurrency,
     assignment_reason: 'payment_method_switch_to_prepaid',
     is_active: true,
   });

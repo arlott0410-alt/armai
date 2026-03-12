@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { MerchantPlanRow, MerchantBillingEventRow, MerchantInternalNoteRow } from '@armai/shared';
+import { getMerchantDefaultCurrency, FALLBACK_CURRENCY } from '@armai/shared';
+import * as merchantService from './merchant.js';
 
 export async function getMerchantPlan(supabase: SupabaseClient, merchantId: string): Promise<MerchantPlanRow | null> {
   const { data, error } = await supabase
@@ -77,13 +79,18 @@ export async function createBillingEvent(
     reference_note?: string | null;
   }
 ): Promise<MerchantBillingEventRow> {
+  const merchant = await merchantService.getMerchantById(supabase, merchantId).catch(() => null);
+  const defaultCurrency = merchant
+    ? getMerchantDefaultCurrency(merchant.default_currency, merchant.default_country)
+    : FALLBACK_CURRENCY;
+  const currency = payload.currency ?? defaultCurrency;
   const { data, error } = await supabase
     .from('merchant_billing_events')
     .insert({
       merchant_id: merchantId,
       event_type: payload.event_type,
       amount: payload.amount,
-      currency: payload.currency ?? 'THB',
+      currency,
       invoice_period_start: payload.invoice_period_start ?? null,
       invoice_period_end: payload.invoice_period_end ?? null,
       due_at: payload.due_at ?? null,

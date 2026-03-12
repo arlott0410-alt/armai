@@ -6,7 +6,7 @@ import * as merchantService from '../../services/merchant.js';
 import * as supportService from '../../services/support.js';
 import * as superDashboard from '../../services/super-dashboard.js';
 import * as billingService from '../../services/billing.js';
-import { createMerchantBodySchema, updateMerchantPlanBodySchema, createBillingEventBodySchema, createInternalNoteBodySchema } from '@armai/shared';
+import { createMerchantBodySchema, updateMerchantPlanBodySchema, createBillingEventBodySchema, createInternalNoteBodySchema, getMerchantDefaultCurrency } from '@armai/shared';
 
 const app = new Hono<{
   Bindings: Env;
@@ -59,12 +59,13 @@ app.post('/merchants', async (c) => {
     });
     await supabase.from('merchant_settings').insert({ merchant_id: merchantId });
     const trialEnds = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    const planCurrency = getMerchantDefaultCurrency(parsed.data.default_currency, parsed.data.default_country);
     await supabase.from('merchant_plans').insert({
       merchant_id: merchantId,
       plan_code: 'starter',
       billing_status: 'trialing',
       monthly_price_usd: 0,
-      currency: 'THB',
+      currency: planCurrency,
       trial_ends_at: trialEnds,
       current_period_end: trialEnds,
       next_billing_at: trialEnds,

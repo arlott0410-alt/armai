@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
+  merchantApi,
   productsApi,
   categoriesApi,
   type ProductRow,
   type CreateProductBody,
   type CategoryRow,
 } from '../../lib/api';
+import { getMerchantDefaultCurrency, FALLBACK_CURRENCY } from '@armai/shared';
 import { PageShell, Card, CardBody, StatusBadge, EmptyState } from '../../components/ui';
 import { FormModal, SaveCancelFooter, FieldGroup } from '../../components/merchant';
 import { theme } from '../../theme';
@@ -27,6 +29,7 @@ export default function MerchantProducts() {
   const { user } = useAuth();
   const token = user?.accessToken ?? null;
 
+  const [defaultCurrency, setDefaultCurrency] = useState<string>(FALLBACK_CURRENCY);
   const [products, setProducts] = useState<ProductRow[]>([]);
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +47,7 @@ export default function MerchantProducts() {
     description: null,
     base_price: 0,
     sale_price: null,
-    currency: 'THB',
+    currency: defaultCurrency,
     sku: null,
     status: 'active',
     requires_manual_confirmation: false,
@@ -77,6 +80,19 @@ export default function MerchantProducts() {
       .catch(() => {});
   }, [token]);
 
+  useEffect(() => {
+    if (!token) return;
+    merchantApi
+      .dashboard(token)
+      .then((r) => {
+        const currency = r.merchant
+          ? getMerchantDefaultCurrency(r.merchant.default_currency, r.merchant.default_country)
+          : FALLBACK_CURRENCY;
+        setDefaultCurrency(currency);
+      })
+      .catch(() => {});
+  }, [token]);
+
   const openCreate = () => {
     setEditing(null);
     setForm({
@@ -86,7 +102,7 @@ export default function MerchantProducts() {
       description: null,
       base_price: 0,
       sale_price: null,
-      currency: 'THB',
+      currency: defaultCurrency,
       sku: null,
       status: 'active',
       requires_manual_confirmation: false,
@@ -107,7 +123,7 @@ export default function MerchantProducts() {
       description: p.description ?? undefined,
       base_price: p.base_price,
       sale_price: p.sale_price ?? undefined,
-      currency: p.currency ?? 'THB',
+      currency: p.currency ?? defaultCurrency,
       sku: p.sku ?? undefined,
       status: p.status,
       requires_manual_confirmation: p.requires_manual_confirmation,
@@ -131,7 +147,7 @@ export default function MerchantProducts() {
     if (!/^[a-z0-9-]+$/.test(form.slug)) return 'Slug must be lowercase letters, numbers, and hyphens only.';
     if (form.base_price < 0) return 'Base price must be ≥ 0.';
     if (form.sale_price != null && form.sale_price < 0) return 'Sale price must be ≥ 0.';
-    if (form.currency && form.currency.length !== 3) return 'Currency must be 3 characters (e.g. THB).';
+    if (form.currency && form.currency.length !== 3) return 'Currency must be 3 characters (e.g. LAK, THB).';
     return null;
   };
 
@@ -265,7 +281,7 @@ export default function MerchantProducts() {
                 {filtered.map((p) => (
                   <tr key={p.id} style={{ borderBottom: `1px solid ${theme.borderMuted}` }}>
                     <td style={{ padding: '12px 16px', fontWeight: 500 }}>{p.name}</td>
-                    <td style={{ padding: '12px 16px' }}>{p.sale_price ?? p.base_price} {p.currency ?? 'THB'}</td>
+                    <td style={{ padding: '12px 16px' }}>{p.sale_price ?? p.base_price} {p.currency ?? defaultCurrency}</td>
                     <td style={{ padding: '12px 16px' }}><StatusBadge status={p.status} /></td>
                     <td style={{ padding: '12px 16px' }}>{p.ai_visible ? <StatusBadge status="ready" label="Yes" /> : <span style={{ color: theme.textMuted }}>No</span>}</td>
                     <td style={{ padding: '12px 16px' }}>
@@ -366,7 +382,7 @@ export default function MerchantProducts() {
             value={form.currency ?? ''}
             onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value.toUpperCase() || undefined }))}
             style={inputStyle}
-            placeholder="THB"
+            placeholder={defaultCurrency}
           />
         </FieldGroup>
         <FieldGroup label="SKU (optional)">

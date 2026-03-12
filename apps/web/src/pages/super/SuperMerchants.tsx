@@ -34,6 +34,8 @@ export default function SuperMerchants() {
   const [slug, setSlug] = useState('');
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [defaultCountry, setDefaultCountry] = useState<string>('TH');
+  const [defaultCurrency, setDefaultCurrency] = useState<string>('');
   const [addError, setAddError] = useState<string | null>(null);
   const [addLoading, setAddLoading] = useState(false);
   const token = user?.accessToken ?? null;
@@ -51,12 +53,21 @@ export default function SuperMerchants() {
     setAddError(null);
     setAddLoading(true);
     try {
-      await superApi.createMerchant(token!, { name, slug, admin_email: adminEmail, admin_password: adminPassword });
+      await superApi.createMerchant(token!, {
+        name,
+        slug,
+        admin_email: adminEmail,
+        admin_password: adminPassword,
+        default_country: defaultCountry || undefined,
+        default_currency: defaultCurrency || undefined,
+      });
       setAddOpen(false);
       setName('');
       setSlug('');
       setAdminEmail('');
       setAdminPassword('');
+      setDefaultCountry('TH');
+      setDefaultCurrency('');
       load();
     } catch (err) {
       setAddError(err instanceof Error ? err.message : 'Failed');
@@ -114,8 +125,19 @@ export default function SuperMerchants() {
                 <input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} required style={{ width: '100%', maxWidth: 320, padding: 10 }} />
               </div>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', marginBottom: 4, color: theme.textSecondary, fontSize: 13 }}>รหัสผ่านแอดมิน (อย่างน้อย 6 ตัว)</label>
-                <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} required minLength={6} placeholder="ตั้งรหัสผ่านสำหรับล็อกอิน" style={{ width: '100%', maxWidth: 320, padding: 10 }} />
+                <label style={{ display: 'block', marginBottom: 4, color: theme.textSecondary, fontSize: 13 }}>Admin password (min 6 characters)</label>
+                <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} required minLength={6} style={{ width: '100%', maxWidth: 320, padding: 10 }} />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', marginBottom: 4, color: theme.textSecondary, fontSize: 13 }}>Default country</label>
+                <select value={defaultCountry} onChange={(e) => setDefaultCountry(e.target.value)} style={{ width: '100%', maxWidth: 320, padding: 10 }}>
+                  <option value="TH">Thailand (TH)</option>
+                  <option value="LA">Laos (LA)</option>
+                </select>
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', marginBottom: 4, color: theme.textSecondary, fontSize: 13 }}>Default currency (optional)</label>
+                <input value={defaultCurrency} onChange={(e) => setDefaultCurrency(e.target.value)} placeholder="e.g. THB, LAK (leave empty to use country default)" style={{ width: '100%', maxWidth: 320, padding: 10 }} />
               </div>
               {addError && <p style={{ color: theme.danger, marginBottom: 8 }}>{addError}</p>}
               <button type="submit" disabled={addLoading} style={primaryBtn}>Create</button>

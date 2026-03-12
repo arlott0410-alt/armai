@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createMerchantBodySchema } from '@armai/shared';
+import { createMerchantBodySchema, getMerchantDefaultCurrency, DEFAULT_COUNTRY } from '@armai/shared';
 
 export type CreateMerchantInput = ReturnType<typeof createMerchantBodySchema.parse>;
 
@@ -13,14 +13,16 @@ export async function createMerchant(
   input: CreateMerchantInput
 ): Promise<{ merchantId: string; userId: string }> {
   const parsed = createMerchantBodySchema.parse(input);
-  // 1. Create auth user via Admin API (handled by route that has access to auth.admin)
-  // 2. Insert merchant
+  const defaultCountry = parsed.default_country ?? DEFAULT_COUNTRY;
+  const defaultCurrency = getMerchantDefaultCurrency(parsed.default_currency, defaultCountry);
   const { data: merchant, error: merchantError } = await supabase
     .from('merchants')
     .insert({
       name: parsed.name,
       slug: parsed.slug,
       billing_status: 'trialing',
+      default_country: defaultCountry,
+      default_currency: defaultCurrency,
     })
     .select('id')
     .single();
@@ -47,7 +49,10 @@ export async function getMerchantSettings(supabase: SupabaseClient, merchantId: 
 }
 
 export async function listMerchantsForSuper(supabase: SupabaseClient) {
-  const { data, error } = await supabase.from('merchants').select('id, name, slug, billing_status, created_at').order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('merchants')
+    .select('id, name, slug, billing_status, default_country, default_currency, created_at')
+    .order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
   return data ?? [];
 }

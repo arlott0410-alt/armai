@@ -1,18 +1,31 @@
 /**
  * Multi-channel customer identity: unified merchant customer + channel identities.
  * Safe linking (auto on exact phone match; manual by merchant); full audit trail.
+ * Phone normalization is country-aware (Laos +856/020, Thailand 66/0) when merchant context available.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ChannelType } from '@armai/shared';
 import type { CustomerIdentityActorType, CustomerIdentityEventType } from '@armai/shared';
+import { normalizePhone as normalizePhoneGeneric, normalizePhoneByCountry } from '@armai/shared';
+import * as merchantService from './merchant.js';
 
-/** Normalize phone for matching: digits only, optional leading 0/66 strip to canonical. */
+/** Normalize phone (generic, digits only, min 8). Backward compat when country unknown. */
 export function normalizePhone(phone: string | null | undefined): string | null {
-  if (phone == null || typeof phone !== 'string') return null;
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length < 8) return null;
-  return digits;
+  return normalizePhoneGeneric(phone);
+}
+
+/**
+ * Normalize phone for a merchant (country-aware). Use when merchantId is available to avoid duplicate identities across format variations (e.g. Laos 020 vs +856).
+ */
+export async function normalizePhoneForMerchant(
+  supabase: SupabaseClient,
+  merchantId: string,
+  phone: string | null | undefined
+): Promise<string | null> {
+  const merchant = await merchantService.getMerchantById(supabase, merchantId).catch(() => null);
+  const country = merchant?.default_country ?? undefined;
+  return normalizePhoneByCountry(phone, country);
 }
 
 /** Get or create customer_channel_identity; update last_seen_at and optional phone/display name. */
@@ -28,7 +41,7 @@ export async function getOrCreateChannelIdentity(
   }
 ): Promise<{ id: string; merchantCustomerId: string | null }> {
   const now = new Date().toISOString();
-  const normPhone = normalizePhone(p.phoneNumber);
+  const normPhone = await normalizePhoneForMerchant(supabase, p.merchantId, p.phoneNumber);
 
   const { data: existing } = await supabase
     .from('customer_channel_identities')
@@ -267,7 +280,7 @@ export async function createMerchantCustomer(
     notes?: string | null;
   }
 ): Promise<string> {
-  const norm = normalizePhone(p.phoneNumber);
+  const norm = await normalizePhoneForMerchant(supabase, p.merchantId, p.phoneNumber);
   const now = new Date().toISOString();
   const { data, error } = await supabase
     .from('merchant_customers')

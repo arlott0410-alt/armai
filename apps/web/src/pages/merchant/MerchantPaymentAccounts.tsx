@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { paymentAccountsApi, type PaymentAccountRow, type CreatePaymentAccountBody } from '../../lib/api';
+import { merchantApi, paymentAccountsApi, type PaymentAccountRow, type CreatePaymentAccountBody } from '../../lib/api';
+import { getMerchantDefaultCurrency, FALLBACK_CURRENCY } from '@armai/shared';
 import { PageShell, Card, CardBody, EmptyState } from '../../components/ui';
 import { FormModal, SaveCancelFooter, FieldGroup } from '../../components/merchant';
 import { Badge } from '../../components/ui';
@@ -20,6 +21,7 @@ export default function MerchantPaymentAccounts() {
   const { user } = useAuth();
   const token = user?.accessToken ?? null;
 
+  const [defaultCurrency, setDefaultCurrency] = useState<string>(FALLBACK_CURRENCY);
   const [accounts, setAccounts] = useState<PaymentAccountRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +35,7 @@ export default function MerchantPaymentAccounts() {
     account_name: null,
     account_number: '',
     account_holder_name: '',
-    currency: 'THB',
+    currency: defaultCurrency,
     qr_image_path: null,
     qr_image_object_key: null,
     is_primary: false,
@@ -57,6 +59,19 @@ export default function MerchantPaymentAccounts() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!token) return;
+    merchantApi
+      .dashboard(token)
+      .then((r) => {
+        const currency = r.merchant
+          ? getMerchantDefaultCurrency(r.merchant.default_currency, r.merchant.default_country)
+          : FALLBACK_CURRENCY;
+        setDefaultCurrency(currency);
+      })
+      .catch(() => {});
+  }, [token]);
+
   const openCreate = () => {
     setEditing(null);
     setForm({
@@ -64,7 +79,7 @@ export default function MerchantPaymentAccounts() {
       account_name: null,
       account_number: '',
       account_holder_name: '',
-      currency: 'THB',
+      currency: defaultCurrency,
       qr_image_path: null,
       qr_image_object_key: null,
       is_primary: false,
@@ -83,7 +98,7 @@ export default function MerchantPaymentAccounts() {
       account_name: a.account_name ?? null,
       account_number: a.account_number,
       account_holder_name: a.account_holder_name,
-      currency: a.currency ?? 'THB',
+      currency: a.currency ?? defaultCurrency,
       qr_image_path: a.qr_image_path ?? null,
       qr_image_object_key: a.qr_image_object_key ?? null,
       is_primary: a.is_primary,
@@ -279,10 +294,10 @@ export default function MerchantPaymentAccounts() {
           <input
             type="text"
             maxLength={3}
-            value={form.currency ?? 'THB'}
-            onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value.toUpperCase() || 'THB' }))}
+            value={form.currency ?? defaultCurrency}
+            onChange={(e) => setForm((f) => ({ ...f, currency: (e.target.value.toUpperCase() || defaultCurrency).slice(0, 3) }))}
             style={inputStyle}
-            placeholder="THB"
+            placeholder={defaultCurrency}
           />
         </FieldGroup>
         <FieldGroup label="QR image path (optional)">

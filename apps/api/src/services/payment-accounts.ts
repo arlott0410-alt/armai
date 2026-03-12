@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { selectPaymentAccountForOrder } from '@armai/shared';
+import { selectPaymentAccountForOrder, getMerchantDefaultCurrency, FALLBACK_CURRENCY } from '@armai/shared';
 import type { CreateMerchantPaymentAccountBody } from '@armai/shared';
 import type { MerchantPaymentAccount } from '@armai/shared';
+import * as merchantService from './merchant.js';
 
 export async function listPaymentAccounts(supabase: SupabaseClient, merchantId: string, activeOnly = true) {
   let q = supabase
@@ -27,6 +28,11 @@ export async function getPaymentAccount(supabase: SupabaseClient, merchantId: st
 }
 
 export async function createPaymentAccount(supabase: SupabaseClient, merchantId: string, body: CreateMerchantPaymentAccountBody) {
+  const merchant = await merchantService.getMerchantById(supabase, merchantId).catch(() => null);
+  const defaultCurrency = merchant
+    ? getMerchantDefaultCurrency(merchant.default_currency, merchant.default_country)
+    : FALLBACK_CURRENCY;
+  const currency = body.currency ?? defaultCurrency;
   const { data, error } = await supabase
     .from('merchant_payment_accounts')
     .insert({
@@ -35,7 +41,7 @@ export async function createPaymentAccount(supabase: SupabaseClient, merchantId:
       account_name: body.account_name ?? null,
       account_number: body.account_number,
       account_holder_name: body.account_holder_name,
-      currency: body.currency ?? 'THB',
+      currency,
       qr_image_path: body.qr_image_path ?? null,
       qr_image_object_key: body.qr_image_object_key ?? null,
       is_primary: body.is_primary ?? false,
