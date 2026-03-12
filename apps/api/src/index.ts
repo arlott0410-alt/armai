@@ -2,19 +2,15 @@ import { Hono } from 'hono'
 import type { Env } from './env.js'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
-import { rateLimiter } from 'hono-rate-limiter'
 import { structuredLog } from './lib/logger.js'
 
 function correlationId(): string {
   return crypto.randomUUID()
 }
 
-const subscribeOnboardLimiter = rateLimiter({
-  windowMs: 60_000,
-  limit: 10,
-  keyGenerator: (c) => c.req.header('cf-connecting-ip') ?? c.req.header('x-forwarded-for') ?? 'ip',
-  message: { error: 'Too many requests. Try again in a minute.' },
-})
+// Rate limiting for /subscribe and /onboard was removed: hono-rate-limiter runs async I/O
+// in global scope which Cloudflare Workers disallows. To re-enable, use
+// @hono-rate-limiter/cloudflare with KV or the Workers Rate Limiting binding.
 
 import health from './routes/health.js'
 import auth from './routes/auth.js'
@@ -41,8 +37,6 @@ app.use('*', async (c, next) => {
   c.set('correlationId', id)
   await next()
 })
-app.use('/api/subscribe*', subscribeOnboardLimiter)
-app.use('/api/onboard*', subscribeOnboardLimiter)
 app.use(
   '*',
   cors({
