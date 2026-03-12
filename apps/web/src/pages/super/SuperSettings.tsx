@@ -12,6 +12,8 @@ const bankSchema = z.object({
   account_number: z.string().min(1, 'Required'),
   account_holder: z.string().min(1, 'Required'),
   qr_image_url: z.string().nullable().optional(),
+  /** Required when saving: confirm your password to prevent unauthorized change. */
+  password_confirm: z.string().min(1, 'Enter your current password to save'),
 })
 
 type BankFormValues = z.infer<typeof bankSchema>
@@ -36,6 +38,7 @@ export default function SuperSettings() {
       account_number: '',
       account_holder: '',
       qr_image_url: null,
+      password_confirm: '',
     },
   })
 
@@ -80,9 +83,15 @@ export default function SuperSettings() {
         setError('account_number', { message: fieldErrors.account_number[0] })
       if (fieldErrors.account_holder?.[0])
         setError('account_holder', { message: fieldErrors.account_holder[0] })
+      if (fieldErrors.password_confirm?.[0])
+        setError('password_confirm', { message: fieldErrors.password_confirm[0] })
       return
     }
     if (!token) return
+    if (!parsed.data.password_confirm?.trim()) {
+      setError('password_confirm', { message: 'Enter your current password to save bank details' })
+      return
+    }
     try {
       await systemSettingsApi.patch(token, {
         bank: {
@@ -91,10 +100,14 @@ export default function SuperSettings() {
           account_holder: parsed.data.account_holder,
           qr_image_url: parsed.data.qr_image_url ?? null,
         },
+        password_confirm: parsed.data.password_confirm,
       })
       toast.success(t('common.save') + ' — OK')
+      setValue('password_confirm', '')
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Save failed')
+      const msg = err instanceof Error ? err.message : 'Save failed'
+      toast.error(msg)
+      if (msg.toLowerCase().includes('password')) setError('password_confirm', { message: msg })
     }
   }
 
@@ -153,6 +166,24 @@ export default function SuperSettings() {
               {errors.account_holder && (
                 <p className="mt-1 text-xs text-red-500">{errors.account_holder.message}</p>
               )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-[var(--armai-text)] mb-1">
+                Your current password (required to save)
+              </label>
+              <input
+                type="password"
+                autoComplete="current-password"
+                {...register('password_confirm')}
+                className="w-full rounded-lg border border-[var(--armai-border)] bg-[var(--armai-bg)] px-3 py-2 text-[var(--armai-text)]"
+                placeholder="Enter password to confirm change"
+              />
+              {errors.password_confirm && (
+                <p className="mt-1 text-xs text-red-500">{errors.password_confirm.message}</p>
+              )}
+              <p className="mt-1 text-xs text-[var(--armai-text-muted)]">
+                Prevents unauthorized change of bank account.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium text-[var(--armai-text)] mb-1">

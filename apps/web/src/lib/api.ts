@@ -155,12 +155,14 @@ export const systemSettingsApi = {
   patch: (
     token: string,
     body: {
-      bank: {
+      bank?: {
         bank_name: string
         account_number: string
         account_holder: string
         qr_image_url?: string | null
       }
+      /** Required when updating bank: current password to confirm identity. */
+      password_confirm?: string
     }
   ) => request<{ ok: boolean }>('/system/settings', { method: 'PATCH', token, body }),
   uploadQr: async (token: string, file: File): Promise<{ qr_image_url: string }> => {

@@ -26,6 +26,19 @@ export async function getCachedResponse(requestUrl: string): Promise<Response | 
 }
 
 /**
+ * Delete cached GET response for the given URL (e.g. after PATCH so next GET is fresh).
+ */
+export async function deleteCachedResponse(requestUrl: string): Promise<void> {
+  try {
+    const cache = caches.default as Cache
+    const req = new Request(requestUrl, { method: 'GET' })
+    await cache.delete(req)
+  } catch {
+    // ignore
+  }
+}
+
+/**
  * Store a response in the cache. Clones the response and adds Cache-Control.
  * Does not await in the critical path if you want fire-and-forget.
  */

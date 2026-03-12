@@ -53,6 +53,7 @@ export default function Pricing() {
   const [modalType, setModalType] = useState<SubscribeType | null>(null)
   const [paymentId, setPaymentId] = useState<string | null>(null)
   const [bank, setBank] = useState<BankSettings>(null)
+  const [bankLoaded, setBankLoaded] = useState(false)
   const [submitLoading, setSubmitLoading] = useState(false)
   const [slipUploaded, setSlipUploaded] = useState(false)
   const [slipUploading, setSlipUploading] = useState(false)
@@ -63,8 +64,14 @@ export default function Pricing() {
   useEffect(() => {
     systemSettingsApi
       .get()
-      .then((r) => setBank(r.bank))
-      .catch(() => setBank(null))
+      .then((r) => {
+        setBank(r.bank)
+        setBankLoaded(true)
+      })
+      .catch(() => {
+        setBank(null)
+        setBankLoaded(true)
+      })
   }, [])
 
   useEffect(() => {
@@ -118,6 +125,11 @@ export default function Pricing() {
     setError(null)
     setPendingMessage(null)
     setSlipUploaded(false)
+    // Refetch bank details when opening modal so we show latest after super admin saves
+    systemSettingsApi
+      .get()
+      .then((r) => setBank(r.bank))
+      .catch(() => setBank(null))
     setPaymentId(null)
     if (type === 'trial') {
       setModalType(type)
@@ -392,7 +404,9 @@ export default function Pricing() {
                   </p>
                   {!bank ? (
                     <p className="text-sm text-[var(--armai-text-muted)] mb-3">
-                      {t('common.loading')}
+                      {bankLoaded
+                        ? 'ບໍ່ມີຂໍ້ມູນບັນຊີ — ກະລຸນາໃຫ້ຜູ້ດູແລລະບົບຕັ້ງຄ່າໃນ ຕັ້ງຄ່າ.'
+                        : t('common.loading')}
                     </p>
                   ) : (
                     <div className="rounded-lg bg-[var(--armai-bg)] p-3 text-sm text-[var(--armai-text)] font-mono mb-3">

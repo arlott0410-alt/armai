@@ -1,8 +1,13 @@
 import { Hono } from 'hono'
 import type { Env } from '../../env.js'
 import { authMiddleware, requireSuperAdmin } from '../../middleware/auth.js'
-import { getSupabaseAdmin } from '../../lib/supabase.js'
-import { getCachedResponse, setCachedResponse, cacheControlHeaders } from '../../lib/cache.js'
+import { getSupabaseAdmin, getSupabaseAnon } from '../../lib/supabase.js'
+import {
+  getCachedResponse,
+  setCachedResponse,
+  deleteCachedResponse,
+  cacheControlHeaders,
+} from '../../lib/cache.js'
 import { logRequest } from '../../lib/logger.js'
 import { z } from 'zod'
 
@@ -23,6 +28,8 @@ const bankSettingsSchema = z.object({
 
 const patchBodySchema = z.object({
   bank: bankSettingsSchema.optional(),
+  /** Required when updating bank: current password to prevent unauthorized change. */
+  password_confirm: z.string().min(1).optional(),
 })
 
 function normalizeBank(value: Record<string, unknown> | null) {
@@ -90,19 +97,48 @@ app.get('/settings', async (c) => {
   const headers = new Headers(res.headers)
   Object.entries(cacheControlHeaders()).forEach(([k, v]) => headers.set(k, v))
   const response = new Response(res.body, { status: res.status, headers })
-  await setCachedResponse(url, response.clone())
+  // Only cache when bank is set so Pricing sees updates after super admin saves (avoid serving stale null)
+  if (bank != null) await setCachedResponse(url, response.clone())
   return response
 })
 
-/** PATCH /api/system/settings — super_admin only. Writes to Supabase + KV. */
+/** PATCH /api/system/settings — super_admin only. Bank change requires password_confirm and is audited. */
 app.patch('/settings', authMiddleware, requireSuperAdmin, async (c) => {
   logRequest('/api/system/settings', c.get('correlationId') as string | undefined, {
     method: 'PATCH',
   })
-  const body = await c.req.json().catch(() => ({}))
+  const auth = c.get('auth')
+  const body = (await c.req.json().catch(() => ({}))) as {
+    bank?: {
+      bank_name: string
+      account_number: string
+      account_holder: string
+      qr_image_url?: string | null
+    }
+    password_confirm?: string
+  }
   const parsed = patchBodySchema.safeParse(body)
   if (!parsed.success) {
     return c.json({ error: 'Validation failed', details: parsed.error.flatten() }, 400)
+  }
+  if (parsed.data.bank) {
+    if (!parsed.data.password_confirm || parsed.data.password_confirm.length < 1) {
+      return c.json(
+        { error: 'Password confirmation required to change bank account (security)' },
+        400
+      )
+    }
+    if (!auth.email) {
+      return c.json({ error: 'Cannot verify password: no email on account' }, 400)
+    }
+    const anon = getSupabaseAnon(c.env, null)
+    const { error: signInError } = await anon.auth.signInWithPassword({
+      email: auth.email,
+      password: parsed.data.password_confirm,
+    })
+    if (signInError) {
+      return c.json({ error: 'Invalid password. Enter your current password to confirm.' }, 401)
+    }
   }
   const supabase = getSupabaseAdmin(c.env)
   const now = new Date().toISOString()
@@ -125,6 +161,18 @@ app.patch('/settings', authMiddleware, requireSuperAdmin, async (c) => {
         // ignore
       }
     }
+    // Invalidate GET cache so Pricing page shows new bank details on next load
+    const getSettingsUrl = new URL(c.req.url)
+    getSettingsUrl.search = ''
+    await deleteCachedResponse(getSettingsUrl.toString())
+    // Audit: who changed subscription bank and when (no sensitive data in details)
+    await supabase.from('audit_logs').insert({
+      actor_id: auth.userId,
+      action: 'system_settings_updated',
+      resource_type: 'system_settings',
+      resource_id: null,
+      details: { key: BANK_SETTINGS_KEY, at: now },
+    })
   }
   return c.json({ ok: true })
 })
