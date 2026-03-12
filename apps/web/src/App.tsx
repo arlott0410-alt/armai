@@ -13,6 +13,7 @@ import SuperMerchantDetail from './pages/super/SuperMerchantDetail'
 import SuperBilling from './pages/super/SuperBilling'
 import SuperSupport from './pages/super/SuperSupport'
 import SuperAudit from './pages/super/SuperAudit'
+import SuperPlans from './pages/super/SuperPlans'
 import MerchantDashboard from './pages/merchant/MerchantDashboard'
 import MerchantOrders from './pages/merchant/MerchantOrders'
 import MerchantBankSync from './pages/merchant/MerchantBankSync'
@@ -28,9 +29,6 @@ import MerchantChannels from './pages/merchant/MerchantChannels'
 import MerchantCustomers from './pages/merchant/MerchantCustomers'
 import MerchantCustomerDetail from './pages/merchant/MerchantCustomerDetail'
 import MerchantOperationsFeed from './pages/merchant/MerchantOperationsFeed'
-import AdminLayout from './layouts/AdminLayout'
-import AdminPlans from './pages/admin/AdminPlans'
-import AdminPlaceholder from './pages/admin/AdminPlaceholder'
 
 function ProtectedRoute({
   children,
@@ -80,20 +78,7 @@ export default function App() {
         <Route path="billing" element={<SuperBilling />} />
         <Route path="support" element={<SuperSupport />} />
         <Route path="audit" element={<SuperAudit />} />
-      </Route>
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute requireSuper>
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/admin/plans" replace />} />
-        <Route path="plans" element={<AdminPlans />} />
-        <Route path="analytics" element={<AdminPlaceholder page="analytics" />} />
-        <Route path="settings" element={<AdminPlaceholder page="settings" />} />
-        <Route path="ai-tools" element={<AdminPlaceholder page="ai-tools" />} />
+        <Route path="plans" element={<SuperPlans />} />
       </Route>
       <Route
         path="/merchant"
@@ -123,6 +108,9 @@ export default function App() {
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/checkout/success" element={<CheckoutSuccess />} />
       <Route path="/checkout/error" element={<CheckoutError />} />
+      {/* Legacy: admin merged into super */}
+      <Route path="/admin" element={<Navigate to="/super/plans" replace />} />
+      <Route path="/admin/*" element={<Navigate to="/super/plans" replace />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>

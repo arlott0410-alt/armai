@@ -5,10 +5,12 @@ import { superApi, type AdminPlanRow } from '../../lib/api'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { PageShell } from '../../components/ui'
+import { DashboardSkeleton } from '../../components/ui/DashboardSkeleton'
 
 const LAK_FORMAT = new Intl.NumberFormat('lo-LA', { maximumFractionDigits: 0 })
 
-export default function AdminPlans() {
+export default function SuperPlans() {
   const { user } = useAuth()
   const { t } = useI18n()
   const [plans, setPlans] = useState<AdminPlanRow[]>([])
@@ -43,91 +45,99 @@ export default function AdminPlans() {
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="h-8 w-48 bg-[var(--armai-surface-elevated)] rounded animate-pulse" />
-        <div className="h-64 bg-[var(--armai-surface-elevated)] rounded-xl animate-pulse" />
-      </div>
+      <PageShell title={t('admin.plans')} description="Subscription plans (LAK)">
+        <DashboardSkeleton />
+      </PageShell>
     )
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-[var(--armai-text)]">{t('admin.plans')}</h1>
-        <button
+    <PageShell
+      title={t('admin.plans')}
+      description="Subscription plans (LAK)"
+      actions={
+        <motion.button
           type="button"
           onClick={() => setCreating(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--armai-primary)] text-white font-medium hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)]"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--armai-primary)] text-white font-medium shadow-sm hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)]"
+          aria-label="Add plan"
         >
           <Plus className="h-4 w-4" />
           Add plan
-        </button>
-      </div>
-
-      <div className="rounded-xl border border-[var(--armai-border)] bg-[var(--armai-surface)] overflow-hidden glass-card">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[var(--armai-border-muted)] bg-[var(--armai-surface-elevated)]">
-              <th className="text-left px-4 py-3 font-medium text-[var(--armai-text)]">Name</th>
-              <th className="text-left px-4 py-3 font-medium text-[var(--armai-text)]">Code</th>
-              <th className="text-right px-4 py-3 font-medium text-[var(--armai-text)]">
-                Price (LAK)
-              </th>
-              <th className="text-left px-4 py-3 font-medium text-[var(--armai-text)]">
-                Max users
-              </th>
-              <th className="text-left px-4 py-3 font-medium text-[var(--armai-text)]">Active</th>
-              <th className="w-24 px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {plans.map((plan) => (
-              <tr
-                key={plan.id}
-                className="border-b border-[var(--armai-border-muted)] hover:bg-[var(--armai-surface-elevated)]/50"
-              >
-                <td className="px-4 py-3 text-[var(--armai-text)]">{plan.name}</td>
-                <td className="px-4 py-3 text-[var(--armai-text-secondary)]">{plan.code}</td>
-                <td className="px-4 py-3 text-right font-medium text-[var(--armai-text)]">
-                  ₭{LAK_FORMAT.format(plan.price_lak)}
-                </td>
-                <td className="px-4 py-3 text-[var(--armai-text-secondary)]">
-                  {plan.max_users ?? '—'}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
-                      plan.active
-                        ? 'bg-green-500/20 text-green-600'
-                        : 'bg-[var(--armai-text-muted)]/20 text-[var(--armai-text-muted)]'
-                    }`}
-                  >
-                    {plan.active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="px-4 py-3 flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setEditing(plan)}
-                    className="p-1.5 rounded text-[var(--armai-text-muted)] hover:bg-[var(--armai-surface-elevated)] hover:text-[var(--armai-primary)]"
-                    aria-label="Edit"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(plan.id)}
-                    className="p-1.5 rounded text-[var(--armai-text-muted)] hover:bg-red-500/10 hover:text-red-500"
-                    aria-label="Delete"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </td>
+        </motion.button>
+      }
+    >
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="py-4">
+        <motion.div
+          whileHover={{ boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}
+          className="rounded-xl border border-[var(--armai-border)] bg-[var(--armai-surface)] overflow-hidden glass-card"
+        >
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[var(--armai-border-muted)] bg-[var(--armai-surface-elevated)]">
+                <th className="text-left px-4 py-3 font-medium text-[var(--armai-text)]">Name</th>
+                <th className="text-left px-4 py-3 font-medium text-[var(--armai-text)]">Code</th>
+                <th className="text-right px-4 py-3 font-medium text-[var(--armai-text)]">
+                  Price (LAK)
+                </th>
+                <th className="text-left px-4 py-3 font-medium text-[var(--armai-text)]">
+                  Max users
+                </th>
+                <th className="text-left px-4 py-3 font-medium text-[var(--armai-text)]">Active</th>
+                <th className="w-24 px-4 py-3" />
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {plans.map((plan) => (
+                <tr
+                  key={plan.id}
+                  className="border-b border-[var(--armai-border-muted)] hover:bg-[var(--armai-surface-elevated)]/50 last:border-b-0"
+                >
+                  <td className="px-4 py-3 text-[var(--armai-text)]">{plan.name}</td>
+                  <td className="px-4 py-3 text-[var(--armai-text-secondary)]">{plan.code}</td>
+                  <td className="px-4 py-3 text-right font-medium text-[var(--armai-text)]">
+                    ₭{LAK_FORMAT.format(plan.price_lak)}
+                  </td>
+                  <td className="px-4 py-3 text-[var(--armai-text-secondary)]">
+                    {plan.max_users ?? '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                        plan.active
+                          ? 'bg-green-500/20 text-green-600'
+                          : 'bg-[var(--armai-text-muted)]/20 text-[var(--armai-text-muted)]'
+                      }`}
+                    >
+                      {plan.active ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(plan)}
+                      className="p-1.5 rounded text-[var(--armai-text-muted)] hover:bg-[var(--armai-surface-elevated)] hover:text-[var(--armai-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)]"
+                      aria-label="Edit"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(plan.id)}
+                      className="p-1.5 rounded text-[var(--armai-text-muted)] hover:bg-red-500/10 hover:text-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                      aria-label="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </motion.div>
+      </motion.div>
 
       {(editing || creating) && (
         <PlanFormModal
@@ -146,7 +156,7 @@ export default function AdminPlans() {
           }}
         />
       )}
-    </motion.div>
+    </PageShell>
   )
 }
 
@@ -228,13 +238,18 @@ function PlanFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="plan-modal-title"
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-md rounded-xl border border-[var(--armai-border)] bg-[var(--armai-surface)] shadow-xl p-6"
       >
-        <h2 className="text-lg font-semibold text-[var(--armai-text)] mb-4">
+        <h2 id="plan-modal-title" className="text-lg font-semibold text-[var(--armai-text)] mb-4">
           {plan ? 'Edit plan' : 'New plan'}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -313,14 +328,14 @@ function PlanFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 rounded-lg border border-[var(--armai-border)] text-[var(--armai-text)] hover:bg-[var(--armai-surface-elevated)]"
+              className="flex-1 py-2 rounded-lg border border-[var(--armai-border)] text-[var(--armai-text)] hover:bg-[var(--armai-surface-elevated)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)]"
             >
               {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 py-2 rounded-lg bg-[var(--armai-primary)] text-white font-medium disabled:opacity-50"
+              className="flex-1 py-2 rounded-lg bg-[var(--armai-primary)] text-white font-medium disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--armai-primary)]"
             >
               {saving ? t('common.loading') : t('common.save')}
             </button>

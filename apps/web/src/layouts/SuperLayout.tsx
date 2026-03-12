@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { Menu, LogOut } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useI18n } from '../i18n/I18nProvider'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 
 export default function SuperLayout() {
   const { user, signOut } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -75,8 +77,8 @@ export default function SuperLayout() {
           <NavLink to="/super/audit" className={navLinkClass} onClick={() => setSidebarOpen(false)}>
             Audit
           </NavLink>
-          <NavLink to="/admin/plans" className={navLinkClass} onClick={() => setSidebarOpen(false)}>
-            Plans (Admin)
+          <NavLink to="/super/plans" className={navLinkClass} onClick={() => setSidebarOpen(false)}>
+            {t('admin.plans')}
           </NavLink>
         </nav>
         <div className="mt-auto pt-4 border-t border-[var(--armai-border-muted)] space-y-3">
