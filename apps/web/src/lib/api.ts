@@ -147,6 +147,8 @@ export const subscribeApi = {
       checkout_url: string | null
       payment_id: string | null
       trial_started?: boolean
+      show_slip_modal?: boolean
+      type?: SubscribeType
     }>('/subscribe', { method: 'POST', token, body }),
 }
 
@@ -223,6 +225,28 @@ export const systemSettingsApi = {
 }
 
 export const subscriptionPaymentsApi = {
+  /** Upload slip file only (no payment yet). Returns slip_url for create-pending. */
+  uploadSlipOnly: async (token: string, file: File): Promise<{ slip_url: string }> => {
+    const base = getBaseUrl()
+    const url = `${base}/merchant/subscription/upload-slip`
+    const form = new FormData()
+    form.append('slip', file)
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error((data as { error?: string }).error ?? `HTTP ${res.status}`)
+    return data as { slip_url: string }
+  },
+  /** Create pending payment after slip uploaded. Call after uploadSlipOnly. */
+  createPending: (token: string, body: { slip_url: string; type: 'monthly' | 'annual' }) =>
+    request<{ payment_id: string; ok: boolean }>('/merchant/subscription/create-pending', {
+      method: 'POST',
+      token,
+      body,
+    }),
   uploadSlip: async (
     token: string,
     paymentId: string,
@@ -254,7 +278,10 @@ export interface MerchantSubscription {
 
 export const subscriptionApi = {
   get: (token: string) =>
-    request<{ subscription: MerchantSubscription | null }>('/merchant/subscription', { token }),
+    request<{
+      subscription: MerchantSubscription | null
+      hasPendingSubscriptionPayment?: boolean
+    }>('/merchant/subscription', { token }),
 }
 
 export interface SuperDashboardKPIs {

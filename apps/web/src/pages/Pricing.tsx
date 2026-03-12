@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuth } from '../contexts/AuthContext'
 import { useI18n } from '../i18n/I18nProvider'
 import {
@@ -169,7 +170,6 @@ export default function Pricing() {
     setError(null)
     setPendingMessage(null)
     setSlipUploaded(false)
-    // Refetch bank details when opening modal so merchants see latest after super admin saves
     loadBankDetails(true)
     setPaymentId(null)
     if (type === 'trial') {
@@ -177,6 +177,7 @@ export default function Pricing() {
       setModalOpen(true)
       return
     }
+    // Monthly/annual: backend no longer creates pending payment here. Show modal "Upload slip" only.
     setSubmitLoading(true)
     const base = window.location.origin
     try {
@@ -199,6 +200,10 @@ export default function Pricing() {
             : null
         )
         setTimeout(() => setModalOpen(false), 1500)
+      } else if (res.show_slip_modal && (res.type === 'monthly' || res.type === 'annual')) {
+        setModalType(res.type)
+        setModalOpen(true)
+        setPendingMessage(null)
       } else if (res.payment_id) {
         setPaymentId(res.payment_id)
         setModalType(type)
@@ -209,6 +214,7 @@ export default function Pricing() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Request failed')
+      toast.error(e instanceof Error ? e.message : 'Request failed')
     } finally {
       setSubmitLoading(false)
     }
@@ -216,15 +222,31 @@ export default function Pricing() {
 
   const handleSlipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !user?.accessToken || !paymentId) return
+    if (!file || !user?.accessToken) return
+    if (modalType !== 'monthly' && modalType !== 'annual') return
     setSlipUploading(true)
     setError(null)
     try {
-      await subscriptionPaymentsApi.uploadSlip(user.accessToken, paymentId, file)
-      setSlipUploaded(true)
-      setPendingMessage(t('pricing.pendingPayment'))
+      // New flow: upload slip first, then create pending payment (no payment record until slip is uploaded).
+      if (!paymentId) {
+        const { slip_url } = await subscriptionPaymentsApi.uploadSlipOnly(user.accessToken, file)
+        await subscriptionPaymentsApi.createPending(user.accessToken, {
+          slip_url,
+          type: modalType,
+        })
+        setSlipUploaded(true)
+        setPendingMessage(t('pricing.pendingPayment'))
+        toast.success(t('pricing.pendingPayment'))
+      } else {
+        await subscriptionPaymentsApi.uploadSlip(user.accessToken, paymentId, file)
+        setSlipUploaded(true)
+        setPendingMessage(t('pricing.pendingPayment'))
+        toast.success(t('pricing.pendingPayment'))
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed')
+      const msg = err instanceof Error ? err.message : 'Upload failed'
+      setError(msg)
+      toast.error(msg)
     } finally {
       setSlipUploading(false)
     }
@@ -499,7 +521,7 @@ export default function Pricing() {
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
                     onChange={handleSlipUpload}
-                    disabled={!paymentId || slipUploading}
+                    disabled={slipUploading || slipUploaded}
                     className="block w-full text-sm text-[var(--armai-text-secondary)] mb-2"
                   />
                   {slipUploading && (

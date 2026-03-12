@@ -132,7 +132,7 @@ export async function startTrial(
   return { ok: true }
 }
 
-/** Create pending payment for monthly or annual (manual slip). */
+/** Create pending payment for monthly or annual (manual slip). Used when no slip yet (legacy flow). */
 export async function createPayment(
   supabase: SupabaseClient,
   params: {
@@ -166,6 +166,42 @@ export async function createPayment(
     .single()
   if (insertError) return { checkoutUrl: null, paymentId: null, error: insertError.message }
   return { checkoutUrl: null, paymentId: paymentRow.id }
+}
+
+/** Create pending payment only after slip uploaded (slip_url required). Used by POST create-pending. */
+export async function createPendingPaymentWithSlip(
+  supabase: SupabaseClient,
+  params: {
+    merchantId: string
+    type: 'monthly' | 'annual'
+    slipUrl: string
+    customerEmail?: string | null
+  }
+): Promise<{ paymentId: string } | { error: string }> {
+  const amount = params.type === 'annual' ? STANDARD_ANNUAL_LAK : STANDARD_PRICE_LAK
+  const slipUrl = (params.slipUrl ?? '').trim()
+  if (!slipUrl) return { error: 'Slip URL is required' }
+  const merchant = await merchantService
+    .getMerchantById(supabase, params.merchantId)
+    .catch(() => null)
+  if (!merchant) return { error: 'Merchant not found' }
+  const { data: paymentRow, error: insertError } = await supabase
+    .from('subscription_payments')
+    .insert({
+      merchant_id: params.merchantId,
+      provider: 'manual_slip',
+      amount,
+      currency: 'LAK',
+      status: 'pending',
+      payment_type: params.type,
+      slip_url: slipUrl,
+      customer_email: params.customerEmail ?? null,
+      metadata: { plan_code: STANDARD_PLAN_CODE, plan_name: 'Standard', interval: params.type },
+    })
+    .select('id')
+    .single()
+  if (insertError) return { error: insertError.message }
+  return { paymentId: paymentRow.id }
 }
 
 /**
@@ -289,7 +325,7 @@ export interface PendingPaymentRow {
   merchant_name?: string
 }
 
-/** List pending subscription payments (for superadmin Billing page). */
+/** List pending subscription payments (for superadmin Billing page). Only those with slip uploaded. */
 export async function listPendingSubscriptionPayments(
   supabase: SupabaseClient
 ): Promise<PendingPaymentRow[]> {
@@ -297,6 +333,7 @@ export async function listPendingSubscriptionPayments(
     .from('subscription_payments')
     .select('id, merchant_id, amount, currency, status, created_at, payment_type, slip_url')
     .eq('status', 'pending')
+    .not('slip_url', 'is', null)
     .order('created_at', { ascending: false })
     .limit(100)
   if (error) throw new Error(error.message)

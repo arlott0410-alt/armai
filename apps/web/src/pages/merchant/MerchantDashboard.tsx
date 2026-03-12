@@ -35,6 +35,7 @@ export default function MerchantDashboard() {
   const [data, setData] = useState<MerchantDashboardResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [sub, setSub] = useState<{ billingStatus: string; trialEndsAt: string | null } | null>(null)
+  const [hasPendingSubscriptionPayment, setHasPendingSubscriptionPayment] = useState(false)
   const token = user?.accessToken ?? null
   const now = useNow(60_000)
 
@@ -50,14 +51,15 @@ export default function MerchantDashboard() {
     if (!token) return
     subscriptionApi
       .get(token)
-      .then(
-        (r) =>
-          r.subscription &&
+      .then((r) => {
+        if (r.subscription) {
           setSub({
             billingStatus: r.subscription.billingStatus,
             trialEndsAt: r.subscription.trialEndsAt ?? null,
           })
-      )
+        }
+        setHasPendingSubscriptionPayment(r.hasPendingSubscriptionPayment ?? false)
+      })
       .catch(() => {})
   }, [token])
 
@@ -122,6 +124,20 @@ export default function MerchantDashboard() {
           <span className="font-medium">
             {t('trial.banner').replace('{days}', String(trialDaysLeft))}
           </span>
+          <Link
+            to="/pricing"
+            className="ml-2 font-medium text-[var(--armai-primary)] hover:underline"
+          >
+            {t('pricing.subscribeCta')}
+          </Link>
+        </div>
+      )}
+      {hasPendingSubscriptionPayment && (
+        <div
+          className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-[var(--armai-text)] dark:bg-amber-500/10"
+          role="status"
+        >
+          <span className="font-medium">{t('pricing.pendingPayment')}</span>
           <Link
             to="/pricing"
             className="ml-2 font-medium text-[var(--armai-primary)] hover:underline"

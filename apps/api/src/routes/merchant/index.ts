@@ -59,7 +59,13 @@ app.get('/subscription', async (c) => {
   const supabase = getSupabaseAdmin(c.env)
   const merchantId = c.get('merchantId')
   const sub = await subscription.getMerchantSubscription(supabase, merchantId)
-  return c.json({ subscription: sub })
+  const { count } = await supabase
+    .from('subscription_payments')
+    .select('id', { count: 'exact', head: true })
+    .eq('merchant_id', merchantId)
+    .eq('status', 'pending')
+    .not('slip_url', 'is', null)
+  return c.json({ subscription: sub, hasPendingSubscriptionPayment: (count ?? 0) > 0 })
 })
 
 app.get('/channels', async (c) => {
@@ -228,7 +234,46 @@ app.get('/ai/metrics', async (c) => {
   return c.json(metrics)
 })
 
-/** PUT /api/merchant/subscription-payments/:paymentId/slip — upload transfer slip (required for approval). */
+/** POST /api/merchant/subscription/upload-slip — upload slip file to R2 only (no payment yet). Returns slip_url for create-pending. */
+app.post('/subscription/upload-slip', async (c) => {
+  const merchantId = c.get('merchantId')
+  const bucket = c.env.SLIP_BUCKET
+  if (!bucket) return c.json({ error: 'Slip upload not configured' }, 503)
+  const body = (await c.req.parseBody().catch(() => ({}))) as Record<string, string | File>
+  const file = body['slip'] ?? body['file']
+  if (!file || typeof file === 'string') {
+    return c.json({ error: 'Missing slip file' }, 400)
+  }
+  const f = file as File
+  const ext = f.name?.split('.').pop()?.toLowerCase() || 'jpg'
+  const safeExt = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? ext : 'jpg'
+  const key = `subscription-slips/pending/${merchantId}/${crypto.randomUUID()}.${safeExt}`
+  const contentType = f.type || (safeExt === 'png' ? 'image/png' : 'image/jpeg')
+  await bucket.put(key, f.stream(), {
+    httpMetadata: { contentType },
+  })
+  return c.json({ slip_url: key })
+})
+
+/** POST /api/merchant/subscription/create-pending — create pending payment after slip uploaded. Body: { slip_url, type: 'monthly'|'annual' }. */
+app.post('/subscription/create-pending', async (c) => {
+  const merchantId = c.get('merchantId')
+  const supabase = getSupabaseAdmin(c.env)
+  const body = (await c.req.json().catch(() => ({}))) as { slip_url?: string; type?: string }
+  const slipUrl = typeof body.slip_url === 'string' ? body.slip_url.trim() : ''
+  const type = body.type === 'annual' ? 'annual' : body.type === 'monthly' ? 'monthly' : null
+  if (!slipUrl) return c.json({ error: 'Slip URL is required' }, 400)
+  if (!type) return c.json({ error: 'Invalid type; use monthly or annual' }, 400)
+  const result = await subscription.createPendingPaymentWithSlip(supabase, {
+    merchantId,
+    type,
+    slipUrl,
+  })
+  if ('error' in result) return c.json({ error: result.error }, 400)
+  return c.json({ payment_id: result.paymentId, ok: true })
+})
+
+/** PUT /api/merchant/subscription-payments/:paymentId/slip — upload transfer slip (legacy: when payment already exists). */
 app.put('/subscription-payments/:paymentId/slip', async (c) => {
   const paymentId = c.req.param('paymentId')
   const merchantId = c.get('merchantId')

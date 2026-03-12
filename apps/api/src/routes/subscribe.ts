@@ -45,6 +45,18 @@ app.post('/', async (c) => {
   const merchantId = c.get('merchantId')
   const supabase = getSupabaseAdmin(c.env)
   const base = c.req.url.replace(/\/subscribe\/?.*$/, '')
+  // For monthly/annual with bank transfer: do NOT create pending payment yet. Frontend shows modal
+  // "Upload transfer slip"; pending payment is created only after slip upload via create-pending.
+  if (type === 'monthly' || type === 'annual') {
+    return c.json({
+      checkout_url: null,
+      payment_id: null,
+      trial_started: false,
+      show_slip_modal: true,
+      type,
+    })
+  }
+
   const result = await createCheckout(supabase, c.env as unknown as Record<string, unknown>, {
     merchantId,
     planCode: 'standard',
