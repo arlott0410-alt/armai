@@ -68,15 +68,20 @@ app.get('/channels', async (c) => {
   const [fbPages, waConnections] = await Promise.all([
     supabase
       .from('facebook_pages')
-      .select('id', { count: 'exact', head: true })
-      .eq('merchant_id', merchantId),
+      .select('id, page_id, page_name')
+      .eq('merchant_id', merchantId)
+      .order('created_at', { ascending: false }),
     supabase
       .from('whatsapp_connections')
       .select('id, phone_number_id, business_account_name, is_active')
       .eq('merchant_id', merchantId)
       .order('created_at', { ascending: false }),
   ])
-  const facebookPageCount = fbPages.count ?? 0
+  const facebookPages = (fbPages.data ?? []).map((row) => ({
+    id: row.id,
+    page_id: row.page_id,
+    page_name: row.page_name ?? null,
+  }))
   const whatsappConnections = (waConnections.data ?? []).map((row) => ({
     id: row.id,
     phone_number_id: row.phone_number_id,
@@ -84,7 +89,7 @@ app.get('/channels', async (c) => {
     is_active: row.is_active,
   }))
   return c.json({
-    facebook: { pageCount: facebookPageCount },
+    facebook: { pageCount: facebookPages.length, pages: facebookPages },
     whatsapp: { connections: whatsappConnections },
   })
 })

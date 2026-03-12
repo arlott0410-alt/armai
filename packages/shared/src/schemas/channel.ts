@@ -31,3 +31,17 @@ export const sendChannelMessagePayloadSchema = z.object({
   message_type: channelMessageTypeSchema.default('text'),
 })
 export type SendChannelMessagePayload = z.infer<typeof sendChannelMessagePayloadSchema>
+
+/** Facebook connect: frontend sends short-lived user access token. */
+export const facebookConnectBodySchema = z.object({
+  access_token: z.string().min(1),
+})
+export type FacebookConnectBody = z.infer<typeof facebookConnectBodySchema>
+
+/** Facebook store page: selected page from connect flow. */
+export const facebookStorePageBodySchema = z.object({
+  page_id: z.string().min(1),
+  page_name: z.string().optional(),
+  page_access_token: z.string().min(1),
+})
+export type FacebookStorePageBody = z.infer<typeof facebookStorePageBodySchema>

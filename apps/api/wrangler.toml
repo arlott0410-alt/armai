@@ -28,7 +28,9 @@ bucket_name = "armai-channel-media"
 # Secrets (set in Dashboard or wrangler secret put):
 # SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 # GEMINI_API_KEY
-# FACEBOOK_APP_SECRET (for webhook signature verification)
+# FACEBOOK_APP_SECRET (for webhook signature verification and token exchange)
+# FACEBOOK_APP_ID (for Facebook connect flow token exchange)
+# FACEBOOK_VERIFY_TOKEN (optional; hub.verify_token for Messenger webhook GET verification)
 
 [vars]
 # Non-secret config; override in Dashboard for production

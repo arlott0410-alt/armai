@@ -984,8 +984,14 @@ export interface WhatsAppConnectionRow {
   updated_at: string
 }
 
+export interface FacebookPageRow {
+  id: string
+  page_id: string
+  page_name: string | null
+}
+
 export interface ChannelsSummaryResponse {
-  facebook: { pageCount: number }
+  facebook: { pageCount: number; pages: FacebookPageRow[] }
   whatsapp: {
     connections: {
       id: string
@@ -998,6 +1004,37 @@ export interface ChannelsSummaryResponse {
 
 export const channelsApi = {
   summary: (token: string) => request<ChannelsSummaryResponse>('/merchant/channels', { token }),
+}
+
+export interface FacebookConnectPagesResponse {
+  pages: Array<{ id: string; name: string; access_token: string | null }>
+}
+
+export interface FacebookStorePageResponse {
+  page: { id: string; page_id: string; page_name: string | null; connection_id: string | null }
+}
+
+export const facebookChannelApi = {
+  connect: (token: string, body: { access_token: string }) =>
+    request<FacebookConnectPagesResponse>('/channels/facebook/connect', {
+      method: 'POST',
+      token,
+      body,
+    }),
+  storePage: (
+    token: string,
+    body: { page_id: string; page_name?: string; page_access_token: string }
+  ) =>
+    request<FacebookStorePageResponse>('/channels/facebook/pages', {
+      method: 'POST',
+      token,
+      body,
+    }),
+  disconnectPage: (token: string, pageRowId: string) =>
+    request<{ ok: boolean }>(`/channels/facebook/pages/${pageRowId}`, {
+      method: 'DELETE',
+      token,
+    }),
 }
 
 export const whatsappApi = {

@@ -19,6 +19,7 @@ import plans from './routes/plans.js'
 import subscribe from './routes/subscribe.js'
 import superRoutes from './routes/super/index.js'
 import merchantRoutes from './routes/merchant/index.js'
+import channelsRoutes from './routes/channels/index.js'
 import settings from './routes/settings.js'
 import orders from './routes/orders.js'
 import support from './routes/support.js'
@@ -53,6 +54,7 @@ app.route('/api/plans', plans)
 app.route('/api/subscribe', subscribe)
 app.route('/api/super', superRoutes)
 app.route('/api/merchant', merchantRoutes)
+app.route('/api/channels', channelsRoutes)
 app.route('/api/system', systemRoutes)
 app.route('/api/settings', settings)
 /** Serve R2 slip images (e.g. subscription transfer slips). Key = path after /api/slip/ */

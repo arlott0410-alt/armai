@@ -8,6 +8,8 @@ export interface Env {
   SUPABASE_SERVICE_ROLE_KEY: string
   GEMINI_API_KEY: string
   FACEBOOK_APP_SECRET: string
+  /** Facebook App ID (for token exchange and SDK). */
+  FACEBOOK_APP_ID?: string
   /** Token for Facebook webhook GET verification (hub.verify_token). */
   FACEBOOK_VERIFY_TOKEN?: string
   /** Token for WhatsApp webhook GET verification (hub.verify_token). */
