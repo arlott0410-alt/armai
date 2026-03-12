@@ -11,6 +11,7 @@ import categoriesRoutes from './categories.js';
 import knowledgeRoutes from './knowledge.js';
 import promotionsRoutes from './promotions.js';
 import paymentAccountsRoutes from './payment-accounts.js';
+import bankSyncRoutes from './bank-sync.js';
 
 const app = new Hono<{
   Bindings: Env;
@@ -56,24 +57,7 @@ app.get('/orders/:orderId', async (c) => {
   return c.json(order);
 });
 
-app.get('/bank-sync', async (c) => {
-  const supabase = getSupabaseAdmin(c.env);
-  const merchantId = c.get('merchantId');
-  const limit = Math.min(parseInt(c.req.query('limit') ?? '50', 10), 100);
-  const { data: transactions } = await supabase
-    .from('bank_transactions')
-    .select('*')
-    .eq('merchant_id', merchantId)
-    .order('transaction_at', { ascending: false })
-    .limit(limit);
-  const { data: matchings } = await supabase
-    .from('matching_results')
-    .select('*, orders(*), bank_transactions(*)')
-    .eq('merchant_id', merchantId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  return c.json({ bankTransactions: transactions ?? [], matchingResults: matchings ?? [] });
-});
+app.route('/bank-sync', bankSyncRoutes);
 
 app.route('/products', productsRoutes);
 app.route('/categories', categoriesRoutes);

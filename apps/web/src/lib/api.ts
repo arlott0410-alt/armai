@@ -171,10 +171,105 @@ export const merchantApi = {
   order: (token: string, orderId: string) => request<OrderRow>(`/merchant/orders/${orderId}`, { token }),
   readiness: (token: string) => request<{ readiness: ReadinessItem[] }>('/merchant/readiness', { token }),
   bankSync: (token: string, limit?: number) =>
-    request<{ bankTransactions: unknown[]; matchingResults: unknown[] }>(
+    request<{ bankTransactions: BankTransactionRow[]; matchingResults: MatchingResultRow[] }>(
       `/merchant/bank-sync${limit != null ? `?limit=${limit}` : ''}`,
       { token }
     ),
+};
+
+/** Bank sync setup: merchant-facing summary and config. */
+export interface BankSyncPaymentAccountSummary {
+  id: string;
+  bank_code: string;
+  account_number_masked: string;
+  account_holder_name: string;
+  is_primary: boolean;
+}
+
+export interface BankSyncBankOption {
+  code: string;
+  label: string;
+  parserId: string;
+  parserLabel: string;
+  supported: boolean;
+}
+
+export interface BankSyncSetupSummary {
+  merchant_id: string;
+  bank_code: string | null;
+  bank_label: string;
+  parser_label: string;
+  payment_account_id: string | null;
+  payment_account_summary: BankSyncPaymentAccountSummary | null;
+  webhook_url: string;
+  webhook_verify_token: string | null;
+  is_active: boolean;
+  device_label: string | null;
+  last_received_at: string | null;
+  last_tested_at: string | null;
+  recent_transaction_count: number;
+  token_set: boolean;
+  bank_options: BankSyncBankOption[];
+}
+
+export interface BankSyncUpdatePayload {
+  bank_code?: string;
+  payment_account_id?: string | null;
+  device_label?: string | null;
+  is_active?: boolean;
+  webhook_verify_token?: string | null;
+}
+
+export interface BankSyncTestResult {
+  success: boolean;
+  status: 'ok' | 'missing_setup' | 'missing_token' | 'missing_payment_account' | 'parse_failed' | 'unsupported_bank';
+  message: string;
+  parser_ready: boolean;
+  parsed_preview?: { amount: number; sender_name: string | null; reference_code: string | null };
+  last_tested_at: string;
+}
+
+export interface BankSyncTokenRegenerateResponse {
+  ok: boolean;
+  webhook_verify_token: string;
+}
+
+export interface BankTransactionRow {
+  id: string;
+  merchant_id: string;
+  bank_config_id: string | null;
+  amount: number;
+  sender_name: string | null;
+  transaction_at: string;
+  reference_code: string | null;
+  bank_tx_id: string | null;
+  raw_parser_id: string | null;
+  raw_payload: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface MatchingResultRow {
+  id: string;
+  merchant_id: string;
+  order_id: string;
+  bank_transaction_id: string;
+  status: string;
+  score: number | null;
+  score_factors: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+  orders?: OrderRow | null;
+  bank_transactions?: BankTransactionRow | null;
+}
+
+export const bankSyncSetupApi = {
+  getSetup: (token: string) => request<BankSyncSetupSummary>('/merchant/bank-sync/setup', { token }),
+  updateSetup: (token: string, body: BankSyncUpdatePayload) =>
+    request<{ ok: boolean }>('/merchant/bank-sync/setup', { method: 'PATCH', token, body }),
+  regenerateToken: (token: string) =>
+    request<BankSyncTokenRegenerateResponse>('/merchant/bank-sync/token/regenerate', { method: 'POST', token }),
+  testConnection: (token: string) =>
+    request<BankSyncTestResult>('/merchant/bank-sync/test', { method: 'POST', token }),
 };
 
 export interface MerchantSettingsResponse {

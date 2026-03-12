@@ -15,6 +15,11 @@ const statusMap: Record<string, { label: string; color: string; bg: string }> = 
   not_started: { label: 'Not started', color: theme.textMuted, bg: 'rgba(255,255,255,0.06)' },
   inactive: { label: 'Inactive', color: theme.textMuted, bg: 'rgba(255,255,255,0.06)' },
   archived: { label: 'Archived', color: theme.textMuted, bg: 'rgba(255,255,255,0.06)' },
+  healthy: { label: 'Healthy', color: theme.success, bg: theme.successMuted },
+  needs_setup: { label: 'Needs setup', color: theme.warning, bg: theme.warningMuted },
+  needs_attention: { label: 'Needs attention', color: theme.warning, bg: theme.warningMuted },
+  configured: { label: 'Configured', color: theme.info, bg: theme.infoMuted },
+  unmatched: { label: 'Unmatched', color: theme.textMuted, bg: 'rgba(255,255,255,0.06)' },
 };
 
 export function StatusBadge({

@@ -12,3 +12,4 @@ export type { MerchantTableColumn } from './MerchantTable';
 export { SectionHeader, Section } from './Section';
 export { EmptyState } from './EmptyState';
 export { PageShell } from './PageShell';
+export { CopyField } from './CopyField';
